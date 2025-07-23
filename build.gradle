@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+}
+
+apply from: "$rootDir/gradle/versioning.gradle"
+
+group = 'ch.so.agi'
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly files('/Users/stefan/apps/jEdit/5.7.0/jedit.jar')
+}
+
+jar {
+    archiveFileName = 'InterlisPlugin.jar'
+    from('InterlisPlugin.props') {
+        into('/')
+    }
+    // manifest {
+    //     attributes(
+    //         'Plugin-Class': 'ch.so.agi.jedit.InterlisPlugin'
+    //     )
+    // }
+}

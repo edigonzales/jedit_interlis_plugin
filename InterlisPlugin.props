@@ -1,0 +1,6 @@
+plugin.ch.so.agi.jedit.InterlisPlugin.activate=startup
+plugin.ch.so.agi.jedit.InterlisPlugin.name=InterlisPlugin
+plugin.ch.so.agi.jedit.InterlisPlugin.author=Stefan Ziegler
+plugin.ch.so.agi.jedit.InterlisPlugin.version=1.0
+plugin.ch.so.agi.jedit.InterlisPlugin.description=A simple Interlis plugin for jEdit.
+plugin.ch.so.agi.jedit.InterlisPlugin.menu.label=Interlis Plugin
