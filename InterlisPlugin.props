@@ -4,3 +4,10 @@ plugin.ch.so.agi.jedit.InterlisPlugin.author=Stefan Ziegler
 plugin.ch.so.agi.jedit.InterlisPlugin.version=1.0
 plugin.ch.so.agi.jedit.InterlisPlugin.description=A simple Interlis plugin for jEdit.
 plugin.ch.so.agi.jedit.InterlisPlugin.menu.label=Interlis Plugin Label
+
+# Menu
+plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
+    bar
+    
+# Action labels
+compileCurrentFile.label=Compile current file  
