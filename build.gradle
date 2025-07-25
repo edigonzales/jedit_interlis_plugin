@@ -74,7 +74,8 @@ tasks.named("classes") {
     finalizedBy(printResolvedDeps)
 }
 
-tasks.register("copyPlugin", Copy) {
+// For developing. Works on macOS only at the moment.
+tasks.register("copyPluginToJedit", Copy) {
     dependsOn 'jar'
     
     def runtimeJars = configurations.runtimeClasspath
