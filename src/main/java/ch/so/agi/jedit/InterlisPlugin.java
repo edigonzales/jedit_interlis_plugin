@@ -15,4 +15,9 @@ public class InterlisPlugin extends EditPlugin {
         System.err.println("[InterlisPlugin] bar.");
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] stopped");
     }
+    
+    public static void compileModelFile() {
+        Log.log(Log.MESSAGE, null, "[InterlisPlugin] ****** compiling current file");
+
+    }
 }

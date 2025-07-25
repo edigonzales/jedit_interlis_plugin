@@ -17,15 +17,19 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url 'https://jars.sogeo.services/mirror' }
 }
 
 dependencies {
     compileOnly files('/Users/stefan/apps/jEdit/5.7.0/jedit.jar')
+    implementation 'ch.interlis:ili2c-core:5.6.4'
+    implementation 'ch.interlis:ili2c-tool:5.6.4'    
 }
 
 jar {
     archiveFileName = 'InterlisPlugin.jar'
-    from('InterlisPlugin.props') {
+    from('InterlisPlugin.props')
+    from('actions.xml') {
         into('/')
     }
     // manifest {
@@ -33,4 +37,58 @@ jar {
     //         'Plugin-Class': 'ch.so.agi.jedit.InterlisPlugin'
     //     )
     // }
+}
+
+tasks.register("printResolvedDeps") {
+    doLast {
+        def ignored = ['jedit.jar'] as Set
+
+        def artifacts = configurations.runtimeClasspath
+                .resolvedConfiguration
+                .resolvedArtifacts
+
+        def jarNames = artifacts.findAll { !ignored.contains(it.file.name) }
+                               .collect { it.file.name }
+                               .sort()
+        def jarsLine = jarNames.join(' ')
+
+        def propsFile = file("InterlisPlugin.props")
+        if (!propsFile.exists()) {
+            throw new GradleException("File not found: InterlisPlugin.props")
+        }
+
+        def updatedLines = propsFile.readLines().collect { line ->
+            if (line.startsWith("plugin.ch.so.agi.jedit.InterlisPlugin.jars=")) {
+                return "plugin.ch.so.agi.jedit.InterlisPlugin.jars=${jarsLine}"
+            } else {
+                return line
+            }
+        }
+
+        propsFile.text = updatedLines.join(System.lineSeparator())
+        println "Updated InterlisPlugin.props with jars: $jarsLine"
+    }
+}
+
+tasks.named("classes") {
+    finalizedBy(printResolvedDeps)
+}
+
+tasks.register("copyPlugin", Copy) {
+    dependsOn 'jar'
+    
+    def runtimeJars = configurations.runtimeClasspath
+        .resolvedConfiguration
+        .resolvedArtifacts
+        .findAll { it.file.name != 'jedit.jar' }
+        .collect { it.file }
+
+    def pluginJar = file("${buildDir}/libs/InterlisPlugin.jar")
+
+    from(runtimeJars + pluginJar) {
+        // Flatten directory structure
+        into '.'
+    }
+
+    into("${System.properties['user.home']}/Library/jEdit/jars")
 }
