@@ -65,7 +65,6 @@ public class InterlisPlugin extends EditPlugin {
         EhiLogger.getInstance().addListener(fileLogger);
 
         EhiLogger.logState("ili2c-"+TransferDescription.getVersion());
-        EhiLogger.logState("ilifile <" + buffer.getPath() + ">");
         
         Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
         
