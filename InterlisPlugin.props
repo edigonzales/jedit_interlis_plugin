@@ -21,3 +21,4 @@ not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)
 error-creating-log-file.message=Error when trying to create ili2c log file:\n{0}
 compiler-exception.message=Compiler exception:\n{0}
 console-missing.message=Console is missing
+shell-not-registered.message=Shell is not registered:\n{0}

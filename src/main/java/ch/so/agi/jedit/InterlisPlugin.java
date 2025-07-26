@@ -54,9 +54,9 @@ public class InterlisPlugin extends EditPlugin {
         Path logFile = null;
         try {
             logFile = Files.createTempFile("ili2c_", ".log");
-            Log.log(Log.MESSAGE, InterlisPlugin.class, "[InterlisPlugin] Temp file created: " + logFile.toAbsolutePath());
+            Log.log(Log.MESSAGE, InterlisPlugin.class, "Temp file created: " + logFile.toAbsolutePath());
         } catch (IOException e) {
-            Log.log(Log.ERROR, InterlisPlugin.class, "[InterlisPlugin] Could not create log file: " + e.getMessage());
+            Log.log(Log.ERROR, InterlisPlugin.class, "Could not create log file: " + e.getMessage());
             GUIUtilities.error(view, "error-creating-log-file", new String[] { e.getMessage() });
             return;
         }
@@ -101,8 +101,11 @@ public class InterlisPlugin extends EditPlugin {
 
         showLogInConsole(view, logFile);
 
-        // todo: delete logfile
-        
+        try {
+            Files.deleteIfExists(logFile);
+        } catch (IOException e) {
+            Log.log(Log.ERROR, InterlisPlugin.class, "Could not delete log file: " + e.getMessage());
+        }
     }
     
     private static void showLogInConsole(View view, Path logFile) {
@@ -116,7 +119,7 @@ public class InterlisPlugin extends EditPlugin {
             return;
         }
         
-        // 3) ...
+        // 3) look up your INTERLIS shell by name
         Shell interlisShell = Shell.getShell("INTERLIS");
         if (interlisShell == null) {
             GUIUtilities.error(view, "shell-not-registered", new String[] { "INTERLIS" });
@@ -125,23 +128,19 @@ public class InterlisPlugin extends EditPlugin {
         console.setShell(interlisShell);
         console.clear();
         
-        // 4) ...
+        // 4) get that shell’s state/output buffer.
         Console.ShellState state = console.getShellState(interlisShell);
 
         // 5) stream your logfile into it
         try (BufferedReader r = Files.newBufferedReader(logFile)) {
             String line;
             while ((line = r.readLine()) != null) {
-                // print(line) automatically appends a newline
                 state.print(null, line);
             }
             // signal end‑of‑command (optional)
             state.commandDone();
         } catch (IOException e) {
-            state.print(null,
-                "Error reading logfile “" 
-                + logFile + "”: " 
-                + e.getMessage() + "\n");
+            state.print(null, "Error reading logfile “" + logFile + "”: " + e.getMessage() + "\n");
         }
     }
 }
