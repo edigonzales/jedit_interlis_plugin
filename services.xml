@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE SERVICES SYSTEM "services.dtd">
+<SERVICES>
+    <SERVICE CLASS="console.Shell" NAME="INTERLIS">
+         new ch.so.agi.jedit.console.InterlisShell();
+    </SERVICE>
+ </SERVICES>

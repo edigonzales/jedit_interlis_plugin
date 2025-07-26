@@ -1,23 +1,147 @@
 package ch.so.agi.jedit;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.util.Log;
+
+import console.ConsolePlugin;
+import console.Shell;
+import console.SystemShell;
+import console.Console;
+
+import ch.ehi.basics.logging.EhiLogger;
+import ch.interlis.ili2c.Ili2cException;
+import ch.interlis.ili2c.Ili2cFailure;
+import ch.interlis.ili2c.Ili2cSettings;
+import ch.interlis.ili2c.config.Configuration;
+import ch.interlis.ili2c.config.FileEntry;
+import ch.interlis.ili2c.config.FileEntryKind;
+import ch.interlis.ili2c.metamodel.Ili2cMetaAttrs;
+import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.interlis.iox_j.logging.FileLogger;
 
 public class InterlisPlugin extends EditPlugin {
     @Override
     public void start() {
-        System.err.println("[InterlisPlugin] foo.");
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
     }
 
     @Override
     public void stop() {
-        System.err.println("[InterlisPlugin] bar.");
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] stopped");
     }
     
-    public static void compileModelFile() {
-        Log.log(Log.MESSAGE, null, "[InterlisPlugin] ****** compiling current file");
+    public static void compileModelFile(View view, Buffer buffer) {
+        Log.log(Log.MESSAGE, InterlisPlugin.class, "[InterlisPlugin] ****** compiling current file");
 
+        if (!buffer.getName().toLowerCase().endsWith(".ili")) {
+            GUIUtilities.error(view, "not-an-ili-file", null);
+            return;
+        }
+        
+        Path logFile = null;
+        try {
+            logFile = Files.createTempFile("ili2c_", ".log");
+            Log.log(Log.MESSAGE, InterlisPlugin.class, "[InterlisPlugin] Temp file created: " + logFile.toAbsolutePath());
+        } catch (IOException e) {
+            Log.log(Log.ERROR, InterlisPlugin.class, "[InterlisPlugin] Could not create log file: " + e.getMessage());
+            GUIUtilities.error(view, "error-creating-log-file", new String[] { e.getMessage() });
+            return;
+        }
+
+        FileLogger fileLogger = new FileLogger(logFile.toFile(), false);
+        EhiLogger.getInstance().addListener(fileLogger);
+
+        EhiLogger.logState("ili2c-"+TransferDescription.getVersion());
+        EhiLogger.logState("ilifile <" + buffer.getPath() + ">");
+        
+        Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
+        
+        String ilidirs = null;
+        if (ilidirs == null) {
+            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
+        }
+
+        Ili2cSettings settings = new Ili2cSettings();
+        ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
+        settings.setIlidirs(ilidirs);
+
+        Configuration config = new Configuration();
+        FileEntry file = new FileEntry(buffer.getPath(), FileEntryKind.ILIMODELFILE);
+        config.addFileEntry(file);
+        config.setAutoCompleteModelList(true);  
+        config.setGenerateWarnings(true);
+        
+        DateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date today = new Date();
+        String dateOut = dateFormatter.format(today);
+
+        TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
+        
+        if (td == null) {
+            EhiLogger.logError("...compiler run failed " + dateOut);
+        } else {
+            EhiLogger.logState("...compiler run done " + dateOut);
+        }
+
+        EhiLogger.getInstance().removeListener(fileLogger);
+        fileLogger.close();
+
+        showLogInConsole(view, logFile);
+
+        // todo: delete logfile
+        
+    }
+    
+    private static void showLogInConsole(View view, Path logFile) {
+        // 1) ensure the Console dockable is visible
+        view.getDockableWindowManager().showDockableWindow("console");
+        
+        // 2) grab the Console instance
+        Console console = ConsolePlugin.getConsole(view);
+        if (console == null) {
+            GUIUtilities.error(view, "console-missing", null);
+            return;
+        }
+        
+        // 3) ...
+        Shell interlisShell = Shell.getShell("INTERLIS");
+        if (interlisShell == null) {
+            GUIUtilities.error(view, "shell-not-registered", new String[] { "INTERLIS" });
+            return;
+        }
+        console.setShell(interlisShell);
+        console.clear();
+        
+        // 4) ...
+        Console.ShellState state = console.getShellState(interlisShell);
+
+        // 5) stream your logfile into it
+        try (BufferedReader r = Files.newBufferedReader(logFile)) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                // print(line) automatically appends a newline
+                state.print(null, line);
+            }
+            // signal end‑of‑command (optional)
+            state.commandDone();
+        } catch (IOException e) {
+            state.print(null,
+                "Error reading logfile “" 
+                + logFile + "”: " 
+                + e.getMessage() + "\n");
+        }
     }
 }

@@ -5,7 +5,7 @@
 <ACTIONS>
     <ACTION NAME="compileCurrentFile">
         <CODE>
-            ch.so.agi.jedit.InterlisPlugin.compileModelFile();
+            ch.so.agi.jedit.InterlisPlugin.compileModelFile(view, buffer);
         </CODE>
     </ACTION>
 </ACTIONS>

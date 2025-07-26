@@ -13,7 +13,9 @@ java -jar jedit.jar -log=3
 
 - ~~meta info in props~~
 - ~~dependency handling?~~
+- Keyboard shortcut (default)
 - activate plugin only when .ili file in current buffer?
 - console output? 
 - error list? 
 - toggle (is_selected)
+- options: ilidirs!!

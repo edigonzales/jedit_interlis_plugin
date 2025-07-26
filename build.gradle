@@ -20,23 +20,33 @@ repositories {
     maven { url 'https://jars.sogeo.services/mirror' }
 }
 
+// TODO
+/*
+def jeditHome = System.getenv("JEDIT_HOME")
+def consoleJar = file("$jeditHome/plugins/Console/jars/console.jar")
+
+dependencies {
+    compileOnly files(consoleJar)
+    // … your other compile/runtime deps …
+}
+*/
+
 dependencies {
     compileOnly files('/Users/stefan/apps/jEdit/5.7.0/jedit.jar')
+    compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/Console.jar")
     implementation 'ch.interlis:ili2c-core:5.6.4'
-    implementation 'ch.interlis:ili2c-tool:5.6.4'    
+    implementation 'ch.interlis:ili2c-tool:5.6.4'
+    implementation 'ch.ehi:ehibasics:1.4.1'    
+    implementation 'ch.interlis:iox-ili:1.24.0'
 }
 
 jar {
     archiveFileName = 'InterlisPlugin.jar'
     from('InterlisPlugin.props')
+    from('services.xml')
     from('actions.xml') {
         into('/')
     }
-    // manifest {
-    //     attributes(
-    //         'Plugin-Class': 'ch.so.agi.jedit.InterlisPlugin'
-    //     )
-    // }
 }
 
 tasks.register("printResolvedDeps") {
