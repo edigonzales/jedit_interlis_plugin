@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.gjt.sp.jedit.*;
+import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
 
 import console.ConsolePlugin;
@@ -32,9 +33,12 @@ import ch.interlis.ili2c.metamodel.Ili2cMetaAttrs;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.iox_j.logging.FileLogger;
 
-public class InterlisPlugin extends EditPlugin {
+public class InterlisPlugin extends EBPlugin {
+    private static final String PROP = "interlis.compileOnSave";
+    
     @Override
     public void start() {
+        EditBus.addToBus(this);
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
         
         // Scheint sonst nicht zu funktionieren.
@@ -54,8 +58,37 @@ public class InterlisPlugin extends EditPlugin {
 
     @Override
     public void stop() {
+        EditBus.removeFromBus(this);
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] stopped");
     }
+    
+    public static void toggleCompileOnSave() {
+        boolean enabled = !jEdit.getBooleanProperty(PROP, false);
+        jEdit.setBooleanProperty(PROP, enabled);
+    }
+    
+    public static boolean isCompileOnSave() {
+        return jEdit.getBooleanProperty(PROP, false);
+    }
+    
+    @Override
+    public void handleMessage(EBMessage msg) {
+        if (!isCompileOnSave()) // user turned the feature off
+            return;
+        
+        if (msg instanceof BufferUpdate) {
+            BufferUpdate bu = (BufferUpdate) msg;
+
+            if (bu.getWhat() == BufferUpdate.SAVED) {
+                Buffer buf = bu.getBuffer();
+                if (buf != null && buf.getName().toLowerCase().endsWith(".ili")) {
+                    View view = bu.getView(); // can be null if saved in background
+                    compileModelFile(view, buf);
+                }
+            }
+        }
+    }
+
     
     public static void compileModelFile(View view, Buffer buffer) {
         Log.log(Log.MESSAGE, InterlisPlugin.class, "[InterlisPlugin] ****** compiling current file");

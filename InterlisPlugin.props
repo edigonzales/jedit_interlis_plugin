@@ -11,10 +11,12 @@ plugin.ch.so.agi.jedit.InterlisPlugin.jars=activation-1.1.1.jar antlr-2.7.7.jar 
 
 # Menu
 plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
+    toggleCompileOnSave \
     bar
     
 # Action labels
 compileCurrentFile.label=Compile current file  
+toggleCompileOnSave.label=Toggle compile on save
 
 # Messages
 not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)

@@ -8,4 +8,15 @@
             ch.so.agi.jedit.InterlisPlugin.compileModelFile(view, buffer);
         </CODE>
     </ACTION>
+    
+    <ACTION NAME="toggleCompileOnSave">
+        <!-- This runs when the user clicks the menu item -->
+        <CODE>
+            ch.so.agi.jedit.InterlisPlugin.toggleCompileOnSave();
+        </CODE>
+        <!-- This tells jEdit whether to draw the check‑mark -->
+        <IS_SELECTED>
+            return ch.so.agi.jedit.InterlisPlugin.isCompileOnSave();
+        </IS_SELECTED>
+    </ACTION>
 </ACTIONS>
