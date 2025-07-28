@@ -13,7 +13,7 @@ java -jar jedit.jar -log=3
 
 - ~~meta info in props~~
 - ~~dependency handling?~~
-- Keyboard shortcut (default)
+- Keyboard shortcut (default): Geht bei mir noch nicht. Ist es überhaupt sinnvoll? Oder soll man das den Benutzer entscheiden lassen.
 - ~~activate plugin only when .ili file in current buffer?~~
 - ~~console output?~~ 
 - error list? 

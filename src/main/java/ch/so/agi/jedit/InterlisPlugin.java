@@ -37,23 +37,19 @@ public class InterlisPlugin extends EditPlugin {
     public void start() {
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
         
-//        Object foo = jEdit.getInputHandler().getKeyBinding("CS+c");
-//        System.err.println("foo: " + ((org.gjt.sp.jedit.BeanShellAction)foo).getLabel());
-
         // Scheint sonst nicht zu funktionieren.
-        ActionSet actionSet = this.getPluginJAR().getActionSet();
-        EditAction[] ea = actionSet.getActions();
-        for (int i = 0; i < ea.length; ++i) {
-            String shortcut1 = jEdit.getProperty(ea[i].getName() + ".shortcut");
-            System.err.println("********: " + shortcut1);
-            System.err.println("********: " + ea[i]);
-            if (shortcut1 != null)
-                jEdit.getInputHandler().addKeyBinding(shortcut1, ea[i]);
-            
-            String shortcut2 = jEdit.getProperty(ea[i].getName() + ".shortcut2");
-            if (shortcut2 != null)
-                jEdit.getInputHandler().addKeyBinding(shortcut2, ea[i]);
-        }
+//        ActionSet actionSet = this.getPluginJAR().getActionSet();
+//        EditAction[] ea = actionSet.getActions();
+//        for (int i = 0; i < ea.length; ++i) {
+//            String shortcut1 = jEdit.getProperty(ea[i].getName() + ".shortcut");
+//            if (shortcut1 != null) {
+//                jEdit.getInputHandler().addKeyBinding(shortcut1, ea[i]);
+//            }
+//            
+//            String shortcut2 = jEdit.getProperty(ea[i].getName() + ".shortcut2");
+//            if (shortcut2 != null)
+//                jEdit.getInputHandler().addKeyBinding(shortcut2, ea[i]);
+//        }
     }
 
     @Override
