@@ -12,6 +12,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.jedit.msg.BufferUpdate;
@@ -20,6 +22,8 @@ import org.gjt.sp.util.Log;
 import console.ConsolePlugin;
 import console.Shell;
 import console.SystemShell;
+import errorlist.DefaultErrorSource;
+import errorlist.ErrorSource;
 import console.Console;
 
 import ch.ehi.basics.logging.EhiLogger;
@@ -35,6 +39,9 @@ import ch.interlis.iox_j.logging.FileLogger;
 
 public class InterlisPlugin extends EBPlugin {
     private static final String PROP = "interlis.compileOnSave";
+    
+    // one error‑source per view, garbage‑collected when the view closes
+    private static final Map<View, DefaultErrorSource> ERRORS = new WeakHashMap<>();
     
     @Override
     public void start() {
@@ -89,6 +96,14 @@ public class InterlisPlugin extends EBPlugin {
         }
     }
 
+    // return the error source for a view, creating & registering it lazily 
+    private static DefaultErrorSource getErrorSource(View view) {
+        return ERRORS.computeIfAbsent(view, v -> {
+            DefaultErrorSource es = new DefaultErrorSource("INTERLIS", v);
+            ErrorSource.registerErrorSource(es); // must register!
+            return es;
+        });
+    }
     
     public static void compileModelFile(View view, Buffer buffer) {
         Log.log(Log.MESSAGE, InterlisPlugin.class, "[InterlisPlugin] ****** compiling current file");
@@ -146,6 +161,19 @@ public class InterlisPlugin extends EBPlugin {
         fileLogger.close();
 
         showLogInConsole(view, logFile);
+        
+        // get / create the ErrorSource for this view 
+        DefaultErrorSource es = getErrorSource(view);
+        es.removeFileErrors(buffer.getPath()); // clear previous diagnostics
+        
+        // parse the log and add entries 
+        int n = Ili2cLogParser.parse(logFile, es);
+        
+        // Wird über Plugin-Optionen gesteuert.
+        // show ErrorList dockable if anything was reported 
+//        if (n > 0 && jEdit.getPlugin("errorlist.ErrorListPlugin") != null) {
+//            view.getDockableWindowManager().showDockableWindow("error-list");
+//        }
 
         try {
             Files.deleteIfExists(logFile);
