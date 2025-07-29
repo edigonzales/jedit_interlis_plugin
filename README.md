@@ -16,9 +16,10 @@ java -jar jedit.jar -log=3
 - Keyboard shortcut (default): Geht bei mir noch nicht. Ist es überhaupt sinnvoll? Oder soll man das den Benutzer entscheiden lassen.
 - ~~activate plugin only when .ili file in current buffer?~~
 - ~~console output?~~ 
-- error list? 
+- ~~error list?~~ 
 -~~ toggle (is_selected)~~
 - options: ilidirs!!
 - autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION
+- Deployment? Wohin? Automatisch?

@@ -1,15 +1,12 @@
 package ch.so.agi.jedit;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -21,14 +18,11 @@ import org.gjt.sp.util.Log;
 
 import console.ConsolePlugin;
 import console.Shell;
-import console.SystemShell;
 import errorlist.DefaultErrorSource;
 import errorlist.ErrorSource;
 import console.Console;
 
 import ch.ehi.basics.logging.EhiLogger;
-import ch.interlis.ili2c.Ili2cException;
-import ch.interlis.ili2c.Ili2cFailure;
 import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.config.Configuration;
 import ch.interlis.ili2c.config.FileEntry;
@@ -40,14 +34,29 @@ import ch.interlis.iox_j.logging.FileLogger;
 public class InterlisPlugin extends EBPlugin {
     private static final String PROP = "interlis.compileOnSave";
     
+    private static final String P_REPOS     = "interlis.repos";
+    private static final String P_PROXYHOST = "interlis.proxyHost";
+    private static final String P_PROXYPORT = "interlis.proxyPort";
+    
     // one error‑source per view, garbage‑collected when the view closes
     private static final Map<View, DefaultErrorSource> ERRORS = new WeakHashMap<>();
     
     @Override
     public void start() {
         EditBus.addToBus(this);
-        Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
+
+        String host = jEdit.getProperty(P_PROXYHOST);
+        String port = jEdit.getProperty(P_PROXYPORT);
+
+        if (host != null && !host.isEmpty()) {
+            System.setProperty("http.proxyHost", host);
+        }
+        if (port != null && !port.isEmpty()) {
+            System.setProperty("http.proxyPort", port);
+        }
         
+        Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
+
         // Scheint sonst nicht zu funktionieren.
 //        ActionSet actionSet = this.getPluginJAR().getActionSet();
 //        EditAction[] ea = actionSet.getActions();
@@ -216,5 +225,10 @@ public class InterlisPlugin extends EBPlugin {
         } catch (IOException e) {
             state.print(null, "Error reading logfile “" + logFile + "”: " + e.getMessage() + "\n");
         }
+    }
+    
+    private List<String> getRepositories() {
+        String raw = jEdit.getProperty(P_REPOS);
+        return Arrays.asList(raw.split("\\s*;\\s*"));
     }
 }
