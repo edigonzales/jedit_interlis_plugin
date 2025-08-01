@@ -1,7 +1,10 @@
 <?xml version="1.0"?>
 <!DOCTYPE SERVICES SYSTEM "services.dtd">
 <SERVICES>
-    <SERVICE CLASS="console.Shell" NAME="INTERLIS">
+    <SERVICE CLASS="console.Shell" NAME="InterlisShell">
          new ch.so.agi.jedit.console.InterlisShell();
+    </SERVICE>
+    <SERVICE CLASS="sidekick.SideKickParser" NAME="interlis_parser">
+         new ch.so.agi.jedit.InterlisSideKickParser();
     </SERVICE>
  </SERVICES>

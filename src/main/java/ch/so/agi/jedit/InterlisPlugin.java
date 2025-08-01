@@ -203,7 +203,7 @@ public class InterlisPlugin extends EBPlugin {
         }
         
         // 3) look up your INTERLIS shell by name
-        Shell interlisShell = Shell.getShell("INTERLIS");
+        Shell interlisShell = Shell.getShell("InterlisShell");
         if (interlisShell == null) {
             GUIUtilities.error(view, "shell-not-registered", new String[] { "INTERLIS" });
             return;

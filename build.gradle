@@ -35,6 +35,7 @@ dependencies {
     compileOnly files('/Users/stefan/apps/jEdit/5.7.0/jedit.jar')
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/Console.jar")
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/ErrorList.jar")
+    compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/SideKick.jar")
     implementation 'ch.interlis:ili2c-core:5.6.4'
     implementation 'ch.interlis:ili2c-tool:5.6.4'
     implementation 'ch.ehi:ehibasics:1.4.1'    

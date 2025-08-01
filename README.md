@@ -18,7 +18,7 @@ java -jar jedit.jar -log=3
 - ~~console output?~~ 
 - ~~error list?~~ 
 -~~ toggle (is_selected)~~
-- options: ilidirs!!
+- options: ~~ilidirs!!~~
 - autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION
