@@ -8,7 +8,6 @@ import java.awt.*;
 
 @SuppressWarnings("serial")
 public class InterlisOptionPane extends AbstractOptionPane {
-
     private static final String P_REPOS     = "interlis.repos";
     private static final String P_PROXYHOST = "interlis.proxyHost";
     private static final String P_PROXYPORT = "interlis.proxyPort";

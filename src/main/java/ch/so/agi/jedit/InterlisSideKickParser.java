@@ -2,18 +2,37 @@ package ch.so.agi.jedit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.Icon;
+import javax.swing.text.Position;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.View;
+import org.gjt.sp.jedit.jEdit;
 
 import errorlist.DefaultErrorSource;
+import sidekick.Asset;
 import sidekick.SideKickCompletion;
 import sidekick.SideKickParsedData;
 import sidekick.SideKickParser;
+import sidekick.util.SideKickAsset;
+import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.ehi.basics.logging.EhiLogger;
+import ch.interlis.ili2c.Ili2cSettings;
+import ch.interlis.ili2c.config.Configuration;
+import ch.interlis.ili2c.config.FileEntry;
+import ch.interlis.ili2c.config.FileEntryKind;
+import ch.interlis.ili2c.metamodel.Element;
+import ch.interlis.ili2c.metamodel.Ili2cMetaAttrs;
+import ch.interlis.ili2c.metamodel.Model;
+import ch.interlis.ili2c.metamodel.Topic;
 
 public class InterlisSideKickParser extends SideKickParser {
+    private static final String P_REPOS     = "interlis.repos";
     
     private static final List<String> KEYWORDS = List.of(
             "ABSTRACT", "ACCORDING", "AGGREGATES", "AGGREGATION", "ALL", "AND", "ANY", "ANYCLASS", "ANYSTRUCTURE",
@@ -37,17 +56,71 @@ public class InterlisSideKickParser extends SideKickParser {
         super("interlis_parser");
     }
     
-    /* ==================================================================
-     * 1) OUTLINE (not implemented yet)
-     * ================================================================== */
+    // Outline
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
-        // We don’t build an outline yet – just return an empty tree
-        return new SideKickParsedData(buffer.getName());
+        SideKickParsedData data = new SideKickParsedData(buffer.getName());
+        DefaultMutableTreeNode root = data.root;
+        
+        Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
+        
+        String ilidirs = jEdit.getProperty(P_REPOS);
+        if (ilidirs == null || ilidirs.isEmpty()) {
+            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
+        }
+       
+        Ili2cSettings settings = new Ili2cSettings();
+        ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
+        settings.setIlidirs(ilidirs);
+
+        Configuration config = new Configuration();
+        FileEntry file = new FileEntry(buffer.getPath(), FileEntryKind.ILIMODELFILE);
+        config.addFileEntry(file);
+        config.setAutoCompleteModelList(true);  
+        config.setGenerateWarnings(true);
+
+        TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
+        if (td == null) return data;
+
+        for (Iterator<?> it = td.iterator(); it.hasNext();) {
+            Object obj = it.next();
+            if (!(obj instanceof Model)) continue;
+            Model m = (Model) obj;
+
+            DefaultMutableTreeNode mNode = node(buffer, m, m.getName());
+            root.add(mNode);
+
+            for (Topic t : m) {
+                DefaultMutableTreeNode tNode = node(buffer, t, t.getName());
+                mNode.add(tNode);
+
+                for (ClassDef c : t.getClassDefs()) {
+                    tNode.add(node(buffer, c, c.getName()));
+                }
+            }
+        }
+        
+        return data;    
     }
     
-    /* ==================================================================
-     * 2) COMPLETION – triggered by Ctrl+Space or SideKick "Complete"
-     * ================================================================== */
+    private DefaultMutableTreeNode node(Buffer buf, Element e, String label) {
+        int line   = Math.max(e.getSourceLine() - 1, 0); // ili2c is 1-based
+        int offset = buf.getLineStartOffset(line);
+
+        SimpleAsset asset = new SimpleAsset(label);
+        asset.setStart(buf.createPosition(offset));
+
+        return new DefaultMutableTreeNode(asset);
+    }
+    
+    private static final class SimpleAsset extends Asset {
+        SimpleAsset(String name) { super(name); }
+
+        @Override public javax.swing.Icon getIcon() { return null; }
+        @Override public String getShortString() { return getName(); }
+        @Override public String getLongString() { return getName(); }
+    }
+    
+    // Completion
     @Override
     public SideKickCompletion complete(EditPane editPane, int caret) {
 

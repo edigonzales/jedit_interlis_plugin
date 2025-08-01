@@ -45,3 +45,4 @@ options.interlis.label=INTERLIS
 
 # sidekick parsers
 sidekick.parser.interlis_parser-switch.label=Parse as INTERLIS
+mode.interlis.sidekick.parser=interlis_parser 

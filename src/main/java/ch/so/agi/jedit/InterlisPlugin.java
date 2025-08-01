@@ -139,11 +139,11 @@ public class InterlisPlugin extends EBPlugin {
         
         Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
         
-        String ilidirs = null;
-        if (ilidirs == null) {
+        String ilidirs = jEdit.getProperty(P_REPOS);
+        if (ilidirs == null || ilidirs.isEmpty()) {
             ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
         }
-
+       
         Ili2cSettings settings = new Ili2cSettings();
         ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
         settings.setIlidirs(ilidirs);
