@@ -89,14 +89,14 @@ public class InterlisSideKickParser extends SideKickParser {
             DefaultMutableTreeNode mNode = node(buffer, m, m.getName());
             root.add(mNode);
 
-            for (Topic t : m) {
-                DefaultMutableTreeNode tNode = node(buffer, t, t.getName());
-                mNode.add(tNode);
-
-                for (ClassDef c : t.getClassDefs()) {
-                    tNode.add(node(buffer, c, c.getName()));
-                }
-            }
+//            for (Topic t : m) {
+//                DefaultMutableTreeNode tNode = node(buffer, t, t.getName());
+//                mNode.add(tNode);
+//
+//                for (ClassDef c : t.getClassDefs()) {
+//                    tNode.add(node(buffer, c, c.getName()));
+//                }
+//            }
         }
         
         return data;    

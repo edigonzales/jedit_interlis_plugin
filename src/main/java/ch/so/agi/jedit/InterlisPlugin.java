@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import javax.swing.SwingUtilities;
+
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
@@ -193,7 +195,7 @@ public class InterlisPlugin extends EBPlugin {
     
     private static void showLogInConsole(View view, Path logFile) {
         // 1) ensure the Console dockable is visible
-        view.getDockableWindowManager().showDockableWindow("console");
+        view.getDockableWindowManager().addDockableWindow("console");
         
         // 2) grab the Console instance
         Console console = ConsolePlugin.getConsole(view);
@@ -224,7 +226,15 @@ public class InterlisPlugin extends EBPlugin {
             state.commandDone();
         } catch (IOException e) {
             state.print(null, "Error reading logfile “" + logFile + "”: " + e.getMessage() + "\n");
-        }
+        } 
+        
+           SwingUtilities.invokeLater(() -> {
+                    if (view != null && view.getEditPane() != null) {
+                        view.getEditPane().focusOnTextArea();   // jEdit ≥ 5.6
+                        // If you’re on an older jEdit use:
+                        // view.getTextArea().requestFocusInWindow();
+                    }
+                });
     }
     
     private List<String> getRepositories() {
