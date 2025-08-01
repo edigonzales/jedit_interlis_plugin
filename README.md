@@ -19,7 +19,7 @@ java -jar jedit.jar -log=3
 - ~~error list?~~ 
 -~~ toggle (is_selected)~~
 - options: ~~ilidirs!!~~
-- Fokus sollte nach kompilieren nicht in der Shell sein.
+- ~~Fokus sollte nach kompilieren nicht in der Shell sein.~~
 - autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION
