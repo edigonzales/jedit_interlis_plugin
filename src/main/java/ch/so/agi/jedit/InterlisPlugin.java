@@ -228,13 +228,13 @@ public class InterlisPlugin extends EBPlugin {
             state.print(null, "Error reading logfile “" + logFile + "”: " + e.getMessage() + "\n");
         } 
         
-           SwingUtilities.invokeLater(() -> {
-                    if (view != null && view.getEditPane() != null) {
-                        view.getEditPane().focusOnTextArea();   // jEdit ≥ 5.6
-                        // If you’re on an older jEdit use:
-                        // view.getTextArea().requestFocusInWindow();
-                    }
-                });
+        SwingUtilities.invokeLater(() -> {
+            if (view != null && view.getEditPane() != null) {
+                view.getEditPane().focusOnTextArea(); // jEdit ≥ 5.6
+                // If you’re on an older jEdit use:
+                // view.getTextArea().requestFocusInWindow();
+            }
+        });
     }
     
     private List<String> getRepositories() {
