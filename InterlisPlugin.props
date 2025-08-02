@@ -27,7 +27,7 @@ error-creating-log-file.message=Error when trying to create ili2c log file:\n{0}
 compiler-exception.message=Compiler exception:\n{0}
 console-missing.message=Console is missing
 shell-not-registered.message=Shell is not registered:\n{0}
-buffer-not-saved=File not saved
+buffer-not-saved.message=There are unsaved changes in the current buffer
 
 # Options / Settings
 # user‑changeable defaults 
