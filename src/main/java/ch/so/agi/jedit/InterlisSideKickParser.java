@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.Icon;
 import javax.swing.text.Position;
 
 import org.gjt.sp.jedit.Buffer;
@@ -19,13 +18,17 @@ import sidekick.Asset;
 import sidekick.SideKickCompletion;
 import sidekick.SideKickParsedData;
 import sidekick.SideKickParser;
-import sidekick.util.SideKickAsset;
 import ch.interlis.ili2c.metamodel.TransferDescription;
-import ch.ehi.basics.logging.EhiLogger;
+import ch.interlis.ili2c.metamodel.Viewable;
+import ch.interlis.ili2c.metamodel.ViewableTransferElement;
 import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.config.Configuration;
 import ch.interlis.ili2c.config.FileEntry;
 import ch.interlis.ili2c.config.FileEntryKind;
+import ch.interlis.ili2c.metamodel.AssociationDef;
+import ch.interlis.ili2c.metamodel.AttributeDef;
+import ch.interlis.ili2c.metamodel.Container;
+import ch.interlis.ili2c.metamodel.Domain;
 import ch.interlis.ili2c.metamodel.Element;
 import ch.interlis.ili2c.metamodel.Ili2cMetaAttrs;
 import ch.interlis.ili2c.metamodel.Model;
@@ -56,7 +59,7 @@ public class InterlisSideKickParser extends SideKickParser {
         super("interlis_parser");
     }
     
-    // Outline
+    // Outline (Tree)
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
         SideKickParsedData data = new SideKickParsedData(buffer.getName());
         DefaultMutableTreeNode root = data.root;
@@ -81,34 +84,127 @@ public class InterlisSideKickParser extends SideKickParser {
         TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
         if (td == null) return data;
 
-        for (Iterator<?> it = td.iterator(); it.hasNext();) {
-            Object obj = it.next();
-            if (!(obj instanceof Model)) continue;
-            Model m = (Model) obj;
-
-            DefaultMutableTreeNode mNode = node(buffer, m, m.getName());
-            root.add(mNode);
-
-//            for (Topic t : m) {
-//                DefaultMutableTreeNode tNode = node(buffer, t, t.getName());
-//                mNode.add(tNode);
-//
-//                for (ClassDef c : t.getClassDefs()) {
-//                    tNode.add(node(buffer, c, c.getName()));
-//                }
-//            }
-        }
         
+        Model[] models = td.getModelsFromLastFile();
+        for (Model model : models) {
+            DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
+            root.add(mNode);
+            
+            processContainer(buffer, model, mNode);
+        }
+                
         return data;    
     }
     
-    private DefaultMutableTreeNode node(Buffer buf, Element e, String label) {
+    private void processContainer(Buffer buffer, Container container, DefaultMutableTreeNode parentNode) {
+        Iterator<?> iter = container.iterator();
+        
+        while (iter.hasNext()) {
+            Element element = (Element) iter.next();
+         
+            if (element instanceof Topic) {
+                Topic topic = (Topic) element;
+                DefaultMutableTreeNode tNode = node(buffer, topic, "TOPIC " + topic.getName());
+                parentNode.add(tNode);
+                
+                processContainer(buffer, topic, tNode);
+            } else if (element instanceof Viewable) {
+                // Viewable umfasst Class, Association, View, Structure
+                // Diese können direkt auf Modellebene (abstrakt) oder in Topics stehen
+                Viewable viewable = (Viewable) element;                
+                String viewableType = getViewableType(viewable);
+                String label = viewableType + " " + viewable.getName();
+                
+                if (viewable.isAbstract()) {
+                    label = label + " (ABSTRACT)";
+                }
+                
+                DefaultMutableTreeNode vNode = node(buffer, viewable, label);
+                parentNode.add(vNode);
+                
+                processAttributes(buffer, viewable, vNode);
+            } else if (element instanceof Domain) {
+                Domain domain = (Domain) element;
+                DefaultMutableTreeNode dNode = node(buffer, domain, "DOMAIN " + domain.getName());
+                parentNode.add(dNode);                
+            } else if (element instanceof Container) {
+                Container subContainer = (Container) element;
+                DefaultMutableTreeNode cNode = node(buffer, subContainer, "**TODO** " + subContainer.getName());
+                parentNode.add(cNode);
+                processContainer(buffer, subContainer, cNode);
+            }
+        }
+    }
+    
+    private void processAttributes(Buffer buffer, Viewable viewable, DefaultMutableTreeNode parentNode) {
+        Iterator attrIter = viewable.getAttributesAndRoles2();
+        
+        while (attrIter.hasNext()) {
+            ViewableTransferElement vte = (ViewableTransferElement) attrIter.next();
+            
+            if (vte.obj instanceof AttributeDef) {
+                AttributeDef attr = (AttributeDef) vte.obj;
+                DefaultMutableTreeNode aNode = node(buffer, attr, attr.getName());
+                parentNode.add(aNode);
+            }
+        }
+    }
+    
+//    private String getTypeInfo(Type type) {
+//        if (type == null) return "Unknown";
+//        
+//        if (type instanceof TypeAlias) {
+//            return ((TypeAlias) type).getAliasing().getName();
+//        } else if (type instanceof CompositionType) {
+//            CompositionType comp = (CompositionType) type;
+//            return "STRUCTURE -> " + comp.getComponentType().getName();
+//        } else if (type instanceof CoordType) {
+//            return "COORD";
+//        } else if (type instanceof NumericType) {
+//            return "NUMERIC";
+//        } else if (type instanceof TextType) {
+//            return "TEXT";
+//        } else if (type instanceof EnumerationType) {
+//            return "ENUMERATION";
+//        }
+//        
+//        return type.getClass().getSimpleName();
+//    }
+    
+    private String getViewableType(Viewable viewable) {
+        if (viewable instanceof ch.interlis.ili2c.metamodel.Table) {
+            ch.interlis.ili2c.metamodel.Table table = (ch.interlis.ili2c.metamodel.Table) viewable;
+            if (table.isIdentifiable()) {
+                return "CLASS";
+            } else {
+                return "STRUCTURE";
+            }
+        } else if (viewable instanceof AssociationDef) {
+            return "ASSOCIATION";
+        } else if (viewable instanceof ch.interlis.ili2c.metamodel.View) {
+            return "VIEW";
+        } else {
+            return "Viewable";
+        }
+    }
+    
+    private DefaultMutableTreeNode node(Buffer buffer, Element e, String label) {
         int line   = Math.max(e.getSourceLine() - 1, 0); // ili2c is 1-based
-        int offset = buf.getLineStartOffset(line);
+        int lineStart = buffer.getLineStartOffset(line);
+        int lineEnd   = buffer.getLineEndOffset(line); 
 
         SimpleAsset asset = new SimpleAsset(label);
-        asset.setStart(buf.createPosition(offset));
+        Position startPos = buffer.createPosition(lineStart);
+        Position endPos = buffer.createPosition(lineEnd);
+        
+        asset.setStart(startPos);
+        asset.setEnd(endPos);    
 
+//        System.out.println("Element: " + e.getName());
+//        System.out.println("Label: " + label);
+//        System.out.println("startPos: " + startPos.getOffset());
+//        System.out.println("endPos: " + endPos.getOffset());
+        
         return new DefaultMutableTreeNode(asset);
     }
     
@@ -126,7 +222,7 @@ public class InterlisSideKickParser extends SideKickParser {
 
         Buffer buf = editPane.getBuffer();
 
-        /* Find the current word fragment directly before the caret */
+        // Find the current word fragment directly before the caret 
         int start = caret - 1;
         while (start >= 0 && Character.isLetter(buf.getText(start, 1).charAt(0)))
             start--;
@@ -135,11 +231,11 @@ public class InterlisSideKickParser extends SideKickParser {
 
         String prefix = buf.getText(start, caret - start);
 
-        /* Build a case-insensitive match list */
+        // Build a case-insensitive match list 
         List<String> matches = new ArrayList<>();
         for (String kw : KEYWORDS)
-            if (kw.startsWith(prefix.toUpperCase())    // same prefix …
-                && !kw.equalsIgnoreCase(prefix))       // … but not identical
+            if (kw.startsWith(prefix.toUpperCase()) // same prefix …
+                && !kw.equalsIgnoreCase(prefix)) // … but not identical
                 matches.add(kw);
 
         if (matches.isEmpty())
@@ -163,7 +259,6 @@ public class InterlisSideKickParser extends SideKickParser {
             this.items  = items;
         }   
         
-        //
         @Override   
         public void insert(int index) {
             if (index < 0 || index >= items.size())

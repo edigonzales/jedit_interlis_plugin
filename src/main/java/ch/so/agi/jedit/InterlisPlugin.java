@@ -179,12 +179,6 @@ public class InterlisPlugin extends EBPlugin {
         
         // parse the log and add entries 
         int n = Ili2cLogParser.parse(logFile, es);
-        
-        // Wird über Plugin-Optionen gesteuert.
-        // show ErrorList dockable if anything was reported 
-//        if (n > 0 && jEdit.getPlugin("errorlist.ErrorListPlugin") != null) {
-//            view.getDockableWindowManager().showDockableWindow("error-list");
-//        }
 
         try {
             Files.deleteIfExists(logFile);
