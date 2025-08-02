@@ -1,4 +1,4 @@
-package ch.so.agi.jedit;
+package ch.so.agi.jedit.ui;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,7 +35,7 @@ import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Topic;
 
 public class InterlisSideKickParser extends SideKickParser {
-    private static final String P_REPOS     = "interlis.repos";
+    private static final String P_REPOS = "interlis.repos";
     
     private static final List<String> KEYWORDS = List.of(
             "ABSTRACT", "ACCORDING", "AGGREGATES", "AGGREGATION", "ALL", "AND", "ANY", "ANYCLASS", "ANYSTRUCTURE",

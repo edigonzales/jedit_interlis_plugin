@@ -5,6 +5,6 @@
          new ch.so.agi.jedit.console.InterlisShell();
     </SERVICE>
     <SERVICE CLASS="sidekick.SideKickParser" NAME="interlis_parser">
-         new ch.so.agi.jedit.InterlisSideKickParser();
+         new ch.so.agi.jedit.ui.InterlisSideKickParser();
     </SERVICE>
  </SERVICES>

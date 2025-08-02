@@ -1,4 +1,4 @@
-package ch.so.agi.jedit;
+package ch.so.agi.jedit.ui;
 
 import org.gjt.sp.jedit.AbstractOptionPane;
 import org.gjt.sp.jedit.jEdit;

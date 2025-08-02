@@ -13,10 +13,12 @@ plugin.ch.so.agi.jedit.InterlisPlugin.jars=activation-1.1.1.jar antlr-2.7.7.jar 
 
 # Menu
 plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
-    toggleCompileOnSave
+    toggleCompileOnSave \
+    - \
+    prettyPrintCurrentFile
     
 # Action labels
-compileCurrentFile.label=Compile current file  
+compileCurrentFile.label=Compile current file
 toggleCompileOnSave.label=Toggle compile on save
 
 # Messages
@@ -40,9 +42,9 @@ interlis.proxyPort=
 
 # register the option pane
 plugin.ch.so.agi.jedit.InterlisPlugin.option-pane=interlis
-options.interlis.code=new ch.so.agi.jedit.InterlisOptionPane();
+options.interlis.code=new ch.so.agi.jedit.ui.InterlisOptionPane();
 options.interlis.label=INTERLIS
 
 # sidekick parsers
 sidekick.parser.interlis_parser-switch.label=Parse as INTERLIS
-mode.interlis.sidekick.parser=interlis_parser 
+mode.interlis.sidekick.parser=interlis_parser

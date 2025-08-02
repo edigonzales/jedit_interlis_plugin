@@ -1,4 +1,4 @@
-package ch.so.agi.jedit;
+package ch.so.agi.jedit.compile;
 
 import errorlist.*;
 import org.gjt.sp.util.Log;

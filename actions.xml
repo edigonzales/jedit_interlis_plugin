@@ -5,10 +5,9 @@
 <ACTIONS>
     <ACTION NAME="compileCurrentFile">
         <CODE>
-            ch.so.agi.jedit.InterlisPlugin.compileModelFile(view, buffer);
+            ch.so.agi.jedit.compile.CompileService.compile(view, buffer);
         </CODE>
     </ACTION>
-    
     <ACTION NAME="toggleCompileOnSave">
         <!-- This runs when the user clicks the menu item -->
         <CODE>
@@ -16,7 +15,7 @@
         </CODE>
         <!-- This tells jEdit whether to draw the check‑mark -->
         <IS_SELECTED>
-            return ch.so.agi.jedit.InterlisPlugin.isCompileOnSave();
+            return ch.so.agi.jedit.InterlisPlugin.compileOnSave();
         </IS_SELECTED>
     </ACTION>
 </ACTIONS>
