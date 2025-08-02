@@ -14,12 +14,12 @@ plugin.ch.so.agi.jedit.InterlisPlugin.jars=activation-1.1.1.jar antlr-2.7.7.jar 
 # Menu
 plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
     toggleCompileOnSave \
-    - \
     prettyPrintCurrentFile
     
 # Action labels
 compileCurrentFile.label=Compile current file
 toggleCompileOnSave.label=Toggle compile on save
+prettyPrintCurrentFile.label=Pretty print current file
 
 # Messages
 not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)
@@ -27,6 +27,7 @@ error-creating-log-file.message=Error when trying to create ili2c log file:\n{0}
 compiler-exception.message=Compiler exception:\n{0}
 console-missing.message=Console is missing
 shell-not-registered.message=Shell is not registered:\n{0}
+buffer-not-saved=File not saved
 
 # Options / Settings
 # user‑changeable defaults 

@@ -18,4 +18,9 @@
             return ch.so.agi.jedit.InterlisPlugin.compileOnSave();
         </IS_SELECTED>
     </ACTION>
+    <ACTION NAME="prettyPrintCurrentFile">
+        <CODE>
+            ch.so.agi.jedit.format.PrettyPrintService.prettyPrint(view, buffer);
+        </CODE>
+    </ACTION>
 </ACTIONS>
