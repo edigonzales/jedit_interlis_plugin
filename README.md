@@ -20,6 +20,8 @@ java -jar jedit.jar -log=3
 -~~ toggle (is_selected)~~
 - options: ~~ilidirs!!~~
 - ~~Fokus sollte nach kompilieren nicht in der Shell sein.~~
+- outline/tree: icons (was hat umleditor?)
+- outline/tree: fehlermeldung in der konsole?
 - autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION

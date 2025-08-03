@@ -47,5 +47,6 @@ options.interlis.code=new ch.so.agi.jedit.ui.InterlisOptionPane();
 options.interlis.label=INTERLIS
 
 # sidekick parsers
+sidekick.parser.interlis_parser.label = INTERLIS
 sidekick.parser.interlis_parser-switch.label=Parse as INTERLIS
 mode.interlis.sidekick.parser=interlis_parser

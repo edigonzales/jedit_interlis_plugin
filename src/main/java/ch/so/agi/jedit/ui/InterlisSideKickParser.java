@@ -90,6 +90,14 @@ public class InterlisSideKickParser extends SideKickParser {
             DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
             root.add(mNode);
             
+            var importedModels = model.getImporting();
+            for (var importedModel : importedModels) {
+                System.out.println("****" + importedModel.getFileName());
+            }
+            
+            
+            
+            
             processContainer(buffer, model, mNode);
         }
                 
