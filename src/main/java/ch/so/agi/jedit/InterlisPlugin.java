@@ -11,14 +11,8 @@ public class InterlisPlugin extends EBPlugin {
         
     @Override
     public void start() {
-        EditBus.addToBus(this);
-        
-        String parser = "interlis_parser";
-        System.out.println("****: " + jEdit.getBufferCount());
-        System.out.println("****: " + jEdit.getBuffers());
-        
+        EditBus.addToBus(this);        
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
-
     }
 
     @Override
