@@ -21,6 +21,57 @@ public final class Ili2cUtil {
 
     private Ili2cUtil() {}
     
+    public static final class Result {
+        private final TransferDescription td;
+        private final Path log;
+        public Result(TransferDescription td, Path log) {
+            this.td = td;
+            this.log = log;
+        }
+        
+        public TransferDescription td() { 
+            return td; 
+        }
+        
+        public Path log() { 
+            return log; 
+        }
+    }
+    
+    public static Result run(Buffer buf, View view, boolean keepLog) {
+        try {
+            Path log = Files.createTempFile("ili2c_", ".log");
+            FileLogger flog = new FileLogger(log.toFile(), false);
+            EhiLogger.getInstance().addListener(flog);
+
+            String repo = jEdit.getProperty(P_REPOS, Ili2cSettings.DEFAULT_ILIDIRS);
+
+            Ili2cSettings set = new Ili2cSettings();
+            ch.interlis.ili2c.Main.setDefaultIli2cPathMap(set);
+            set.setIlidirs(repo);
+
+            Configuration cfg = new Configuration();
+            cfg.addFileEntry(new FileEntry(buf.getPath(), FileEntryKind.ILIMODELFILE));
+            cfg.setAutoCompleteModelList(true);
+            cfg.setGenerateWarnings(true);
+
+            TransferDescription td = ch.interlis.ili2c.Main.runCompiler(cfg, set, null);
+
+            EhiLogger.getInstance().removeListener(flog);
+            flog.close();
+
+            if (!keepLog) {
+                Files.deleteIfExists(log);                
+            }
+
+            return new Result(td, log);
+
+        } catch (IOException e) {
+            GUIUtilities.error(view, "error-creating-log-file", new String[] { e.getMessage() });
+            return new Result(null, null);
+        }
+    }
+    
     public static TransferDescription parse(Buffer buffer) {
         Path logFile = null;
         try {
