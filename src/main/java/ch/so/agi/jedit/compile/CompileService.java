@@ -13,8 +13,8 @@ public final class CompileService {
     private static final Map<View, DefaultErrorSource> MAP = new WeakHashMap<>();
     
     public static void compile(View view, Buffer buffer) {        
-        Path log = Ili2cUtil.runIli2c(view, buffer); // creates, logs, returns path
-        if (log == null) return;
+        Ili2cUtil.Result res = Ili2cUtil.run(buffer, view, true);
+        if (res.log() == null) return;
         
         // 1) log to console
         ConsoleUtil.showLog(view, log);
