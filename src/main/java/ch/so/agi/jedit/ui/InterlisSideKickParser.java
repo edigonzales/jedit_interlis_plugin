@@ -105,7 +105,6 @@ public class InterlisSideKickParser extends SideKickParser {
             for (Model importedModel : importedModels) {
                 System.out.println("****" + importedModel.getFileName());
                 importedModel.setSourceLine(model.getSourceLine());
-                System.out.println("****" + importedModel);
                 DefaultMutableTreeNode imNode = node(buffer, importedModel, "MODEL " + importedModel.getName());
                 mNode.add(imNode);
             }
@@ -218,13 +217,11 @@ public class InterlisSideKickParser extends SideKickParser {
         asset.setStart(startPos);
         asset.setEnd(endPos);    
 
-        System.out.println("Element: " + e.getName());
-        System.out.println("Label: " + label);
-        System.out.println("Class: " + e.getClass());
-        System.out.println("Container: " + e.getScopedName());
-        System.out.println("-----------------------");
-        
-        
+//        System.out.println("Element: " + e.getName());
+//        System.out.println("Label: " + label);
+//        System.out.println("Class: " + e.getClass());
+//        System.out.println("Container: " + e.getScopedName());
+//        System.out.println("-----------------------");
         
 //        System.out.println("line: " + line);
 //        System.out.println("lineStart: " + lineStart);
