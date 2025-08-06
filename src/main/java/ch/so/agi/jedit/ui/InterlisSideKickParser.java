@@ -91,46 +91,7 @@ public class InterlisSideKickParser extends SideKickParser {
             });
 
         // 3. return empty tree right away – it will be replaced later 
-        return data;        
-        
-//        SideKickParsedData data = new SideKickParsedData(buffer.getName());
-//        DefaultMutableTreeNode root = data.root;
-//        
-//        Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
-//        
-//        String ilidirs = jEdit.getProperty(P_REPOS);
-//        if (ilidirs == null || ilidirs.isEmpty()) {
-//            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
-//        }
-//       
-//        Ili2cSettings settings = new Ili2cSettings();
-//        ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
-//        settings.setIlidirs(ilidirs);
-//
-//        Configuration config = new Configuration();
-//        FileEntry file = new FileEntry(buffer.getPath(), FileEntryKind.ILIMODELFILE);
-//        config.addFileEntry(file);
-//        config.setAutoCompleteModelList(true);  
-//        config.setGenerateWarnings(true);
-//
-//        TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
-//        if (td == null) return data;
-//
-//        
-//        Model[] models = td.getModelsFromLastFile();
-//        for (Model model : models) {
-//            DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
-//            root.add(mNode);
-//            
-//            var importedModels = model.getImporting();
-//            for (var importedModel : importedModels) {
-//                System.out.println("****" + importedModel.getFileName());
-//            }
-//            
-//            processContainer(buffer, model, mNode);
-//        }
-//                
-//        return data;    
+        return data;                
     }
     
     // Build the tree from an existing TransferDescription
@@ -140,16 +101,19 @@ public class InterlisSideKickParser extends SideKickParser {
             DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
             root.add(mNode);
             
-            var importedModels = model.getImporting();
-            for (var importedModel : importedModels) {
+            Model[] importedModels = model.getImporting();
+            for (Model importedModel : importedModels) {
                 System.out.println("****" + importedModel.getFileName());
+                importedModel.setSourceLine(model.getSourceLine());
+                System.out.println("****" + importedModel);
+                DefaultMutableTreeNode imNode = node(buffer, importedModel, "MODEL " + importedModel.getName());
+                mNode.add(imNode);
             }
 
             processContainer(buffer, model, mNode);
         }
     }
     
-
     private void processContainer(Buffer buffer, Container container, DefaultMutableTreeNode parentNode) {
         Iterator<?> iter = container.iterator();
         
@@ -243,10 +207,10 @@ public class InterlisSideKickParser extends SideKickParser {
     }
     
     private DefaultMutableTreeNode node(Buffer buffer, Element e, String label) {
-        int line   = Math.max(e.getSourceLine() - 1, 0); // ili2c is 1-based
+        int line = Math.max(e.getSourceLine() - 1, 0); // ili2c is 1-based
         int lineStart = buffer.getLineStartOffset(line);
-        int lineEnd   = buffer.getLineEndOffset(line); 
-
+        int lineEnd = buffer.getLineEndOffset(line); 
+       
         SimpleAsset asset = new SimpleAsset(label);
         Position startPos = buffer.createPosition(lineStart);
         Position endPos = buffer.createPosition(lineEnd);
@@ -254,8 +218,18 @@ public class InterlisSideKickParser extends SideKickParser {
         asset.setStart(startPos);
         asset.setEnd(endPos);    
 
-//        System.out.println("Element: " + e.getName());
-//        System.out.println("Label: " + label);
+        System.out.println("Element: " + e.getName());
+        System.out.println("Label: " + label);
+        System.out.println("Class: " + e.getClass());
+        System.out.println("Container: " + e.getScopedName());
+        System.out.println("-----------------------");
+        
+        
+        
+//        System.out.println("line: " + line);
+//        System.out.println("lineStart: " + lineStart);
+//        System.out.println("lineEnd: " + lineEnd);
+//
 //        System.out.println("startPos: " + startPos.getOffset());
 //        System.out.println("endPos: " + endPos.getOffset());
         

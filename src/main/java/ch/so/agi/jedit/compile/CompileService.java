@@ -26,15 +26,6 @@ public final class CompileService {
         
         System.err.println("*** buffer is dirty: " + buffer.isDirty());
         
-//        if (!buffer.isDirty()) {
-//            TransferDescription td = TdCache.peek(buffer);
-//            if (td != null) {
-//                rebuildUiFromCachedTd(view, buffer, td);
-//                System.err.println("*** RETURN ");
-//                return;
-//            }
-//        }
-        
         if (!buffer.isDirty()) {
             TransferDescription td = TdCache.peek(buffer);
             Path log = TdCache.peekLog(buffer);
@@ -85,32 +76,6 @@ public final class CompileService {
                 }
             }
         }.execute();
-        
-        
-//        
-//        Ili2cUtil.Result res = Ili2cUtil.run(buffer, view, true); // keep log
-//        if (res.log() == null) { // fatal 
-//            return;   
-//        }      
-//        
-//        ConsoleUtil.showLog(view, res.log());
-//        
-//        // 2) feed ErrorList
-//        updateErrorList(view, buffer, res);
-//        
-//        
-//        // 3 — cache TD + ~~model map for hyperlinks~~
-//        TransferDescription td = res.td();
-//        if (td != null) {
-//            TdCache.put(buffer, td);
-//
-//            // TODO
-////            // OPTIONAL: provide data for Ctrl-click hyperlinks
-////            for (Model m : td.getModels())
-////                InterlisHyperlinkSource.putModel(
-////                        m.getName(),
-////                        m.getSourceFile().getAbsolutePath());
-//        }  
     }
     
     public static void unregisterAll() {
