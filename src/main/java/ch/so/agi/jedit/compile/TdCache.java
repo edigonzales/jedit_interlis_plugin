@@ -1,8 +1,11 @@
 package ch.so.agi.jedit.compile;
 
 import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.compile.Ili2cUtil.Result;
+
 import org.gjt.sp.jedit.*;
 
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.*;
@@ -22,37 +25,93 @@ public final class TdCache {
         
     private TdCache() {} // static helper only
     
+    public static Executor getExecutor() { return EXEC; }
+    
     // Return a Future; caller may block or attach a callback.
-    public static Future<TransferDescription> get(Buffer buf) {
+    public static CompletableFuture<TransferDescription> get(Buffer buf) {
         long rev = buf.getLastModified();
-        Entry e  = MAP.get(buf);
+        Entry e = MAP.get(buf);
 
         if (e != null && e.revision == rev) {
-            return e.future; // still valid (may be done)            
+            System.err.println("******* e != null && e.revision == rev");
+            return e.future; // still valid           
         }
 
         // submit new parsing task
-        Future<TransferDescription> fut = EXEC.submit(() -> Ili2cUtil.run(buf, null, false).td());
+        CompletableFuture<TransferDescription> cf = new CompletableFuture<>();
+        EXEC.execute(() -> {
+            try {
+                System.err.println("******* submit new parsing task");
 
-        MAP.put(buf, new Entry(rev, fut));
-        return fut;
+                Result result = Ili2cUtil.run(buf, null, true);
+                cf.complete(result.td()); // success (td may be null)
+                
+                synchronized (MAP) { // WeakHashMap not thread-safe
+                    Entry entry = MAP.get(buf);
+                    if (entry != null && entry.future == cf) {  // still the latest entry?
+                        MAP.put(buf, new Entry(rev, cf, result.log()));
+                    }
+                }
+            } catch (Exception ex) {
+                cf.completeExceptionally(ex); // propagate failure
+            }
+        });
+
+        // Initial muss log file null gesetzt werden. Es wird im try-Block ersetzt, falls es vorhanden ist.
+        MAP.put(buf, new Entry(rev, cf, null));
+        return cf;
     }
     
     // Store a TD explicitly (used by CompilerService after compile).
-    public static void put(Buffer buf, TransferDescription td) {
+    public static void put(Buffer buf, TransferDescription td, Path log) {
         long rev = buf.getLastModified();
-        MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td)));
+        MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td), log));
+    }
+    
+    // Check if buffer is dirty. Handle accordingly.
+    public static TransferDescription peek(Buffer buf) {
+        
+        System.err.println("******* PEEK");
+
+        Entry e = MAP.get(buf);
+        if (e == null || e.revision != buf.getLastModified()) {
+            System.err.println("******* PEEK 1");
+            return null; // stale or missing            
+        }
+
+        Future<TransferDescription> f = e.future;
+        if (!f.isDone()) {
+            System.err.println("******* PEEK 2");
+            return null; // still parsing            
+        }
+
+        try { // already finished
+            System.err.println("******* PEEK 3");
+            System.err.println(f.get().getName());
+            System.err.println(e.log);
+            return f.get(); // quick, no block
+        } catch (Exception ex) {
+            return null; // failed → treat as absent
+        }
+    }
+    
+    public static Path peekLog(Buffer buf) {
+        Entry e = MAP.get(buf);
+        return (e != null && e.revision == buf.getLastModified())
+               ? e.log : null;
     }
     
     // Invalidate when the buffer becomes dirty.
     public static void invalidate(Buffer buf) { MAP.remove(buf); }
     
     private static final class Entry {
-        final long  revision; // Buffer.getLastModified()
-        final Future<TransferDescription> future;
-        Entry(long revision, Future<TransferDescription> future) {
+        final long revision;
+        final CompletableFuture<TransferDescription> future;
+        final Path log; 
+        Entry(long revision, CompletableFuture<TransferDescription> future, Path log) {
             this.revision = revision;
-            this.future   = future;
+            this.future = future;
+            this.log = log;
         }
     }
 }

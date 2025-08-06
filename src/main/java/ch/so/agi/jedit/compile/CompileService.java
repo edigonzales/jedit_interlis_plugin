@@ -2,12 +2,19 @@ package ch.so.agi.jedit.compile;
 
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.compile.Ili2cUtil.Result;
 import ch.so.agi.jedit.console.ConsoleUtil;
 import errorlist.*;
+import sidekick.SideKickPlugin;
 
 import org.gjt.sp.jedit.*;
+import org.gjt.sp.util.Log;
+
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.WeakHashMap;
+
+import javax.swing.SwingWorker;
 
 public final class CompileService {
 
@@ -15,40 +22,121 @@ public final class CompileService {
     
     private CompileService() {}
     
-    public static void compile(View view, Buffer buffer) {        
-        Ili2cUtil.Result res = Ili2cUtil.run(buffer, view, true); // keep log
-        if (res.log() == null) { // fatal 
-            return;   
-        }      
+    public static void compile(View view, Buffer buffer) {  
         
-        ConsoleUtil.showLog(view, res.log());
+        System.err.println("*** buffer is dirty: " + buffer.isDirty());
         
-        // 2) feed ErrorList
+//        if (!buffer.isDirty()) {
+//            TransferDescription td = TdCache.peek(buffer);
+//            if (td != null) {
+//                rebuildUiFromCachedTd(view, buffer, td);
+//                System.err.println("*** RETURN ");
+//                return;
+//            }
+//        }
+        
+        if (!buffer.isDirty()) {
+            TransferDescription td = TdCache.peek(buffer);
+            Path log = TdCache.peekLog(buffer);
+
+            System.err.println("*** buffer is dirty 2: " + buffer.isDirty());
+            System.err.println("*** log: " + log);
+            
+            if (td != null && log != null) {
+                System.err.println("*** log und td ungleich null");
+
+                rebuildUiFromCachedTd(view, buffer, td, log);
+                ConsoleUtil.showLog(view, log); 
+                updateErrorList(view, buffer, log); // keep diagnostics visible
+                return;
+            }
+        }
+        
+        new SwingWorker<Ili2cUtil.Result,Void>() {
+            
+            @Override protected Ili2cUtil.Result doInBackground() {
+                System.err.println("*** SwingWorker");
+                return Ili2cUtil.run(buffer, view, true);
+            }
+
+            @Override protected void done() {
+                System.err.println("*** SwingWorker DONE");
+                try {
+                    Ili2cUtil.Result res = get(); // back on EDT
+                    if (res.log() == null) {
+                        System.err.println("*** log == null");
+                        return;
+                    }
+
+                    ConsoleUtil.showLog(view, res.log());
+                    updateErrorList(view, buffer, res.log());
+                    cacheTd(buffer, res.td(), res.log());
+                    SideKickPlugin.parse(view, true);
+                    
+                    // TODO
+//                  // OPTIONAL: provide data for Ctrl-click hyperlinks
+//                  for (Model m : td.getModels())
+//                      InterlisHyperlinkSource.putModel(
+//                              m.getName(),
+//                              m.getSourceFile().getAbsolutePath());
+                    
+                } catch (Exception e) {
+                    Log.log(Log.ERROR, this, e);
+                }
+            }
+        }.execute();
+        
+        
+//        
+//        Ili2cUtil.Result res = Ili2cUtil.run(buffer, view, true); // keep log
+//        if (res.log() == null) { // fatal 
+//            return;   
+//        }      
+//        
+//        ConsoleUtil.showLog(view, res.log());
+//        
+//        // 2) feed ErrorList
+//        updateErrorList(view, buffer, res);
+//        
+//        
+//        // 3 — cache TD + ~~model map for hyperlinks~~
+//        TransferDescription td = res.td();
+//        if (td != null) {
+//            TdCache.put(buffer, td);
+//
+//            // TODO
+////            // OPTIONAL: provide data for Ctrl-click hyperlinks
+////            for (Model m : td.getModels())
+////                InterlisHyperlinkSource.putModel(
+////                        m.getName(),
+////                        m.getSourceFile().getAbsolutePath());
+//        }  
+    }
+    
+    public static void unregisterAll() {
+        ERRMAP.values().forEach(ErrorSource::unregisterErrorSource);
+        ERRMAP.clear();
+    }
+    
+    private static void updateErrorList(View view, Buffer buffer, Path log) {
         DefaultErrorSource es = ERRMAP.computeIfAbsent(view, v -> {
             DefaultErrorSource e = new DefaultErrorSource("INTERLIS", v);
             ErrorSource.registerErrorSource(e);
             return e;
         });
         es.removeFileErrors(buffer.getPath());
-        Ili2cLogParser.parse(res.log(), es);
-        
-        
-        // 3 — cache TD + ~~model map for hyperlinks~~
-        TransferDescription td = res.td();
-        if (td != null) {
-            TdCache.put(buffer, td);
-
-            // TODO
-//            // OPTIONAL: provide data for Ctrl-click hyperlinks
-//            for (Model m : td.getModels())
-//                InterlisHyperlinkSource.putModel(
-//                        m.getName(),
-//                        m.getSourceFile().getAbsolutePath());
-        }  
+        Ili2cLogParser.parse(log, es);
     }
     
-    public static void unregisterAll() {
-        ERRMAP.values().forEach(ErrorSource::unregisterErrorSource);
-        ERRMAP.clear();
+    private static void cacheTd(Buffer buffer, TransferDescription td, Path log) {
+        if (td != null) {
+            TdCache.put(buffer, td, log);
+        }
+    }
+    
+    private static void rebuildUiFromCachedTd(View v, Buffer buf, TransferDescription td, Path log) {
+        System.out.println("*** rebuildUiFromCachedTd");
+        TdCache.put(buf, td, log); // ensure cache revision matches
+        SideKickPlugin.parse(v, true); // refresh outline immediately
     }
 }

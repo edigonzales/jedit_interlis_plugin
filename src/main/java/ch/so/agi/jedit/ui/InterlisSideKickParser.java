@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.SwingUtilities;
 import javax.swing.text.Position;
 
 import org.gjt.sp.jedit.Buffer;
@@ -18,9 +19,11 @@ import sidekick.Asset;
 import sidekick.SideKickCompletion;
 import sidekick.SideKickParsedData;
 import sidekick.SideKickParser;
+import sidekick.SideKickPlugin;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.ili2c.metamodel.Viewable;
 import ch.interlis.ili2c.metamodel.ViewableTransferElement;
+import ch.so.agi.jedit.compile.TdCache;
 import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.config.Configuration;
 import ch.interlis.ili2c.config.FileEntry;
@@ -61,32 +64,79 @@ public class InterlisSideKickParser extends SideKickParser {
     
     // Outline (Tree)
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
-        SideKickParsedData data = new SideKickParsedData(buffer.getName());
-        DefaultMutableTreeNode root = data.root;
+        // 0. create an (initially empty) tree 
+        final SideKickParsedData data = new SideKickParsedData(buffer.getName());
+        final DefaultMutableTreeNode root = data.root;
         
-        Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
+        System.err.println("**** SideKickParsedData parse");
         
-        String ilidirs = jEdit.getProperty(P_REPOS);
-        if (ilidirs == null || ilidirs.isEmpty()) {
-            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
+        // 1. try to get a ready AST from cache 
+        TransferDescription td = TdCache.peek(buffer);
+
+        if (td != null) { // cached & up-to-date
+            buildTree(buffer, td, root);
+            return data; // full outline
         }
-       
-        Ili2cSettings settings = new Ili2cSettings();
-        ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
-        settings.setIlidirs(ilidirs);
-
-        Configuration config = new Configuration();
-        FileEntry file = new FileEntry(buffer.getPath(), FileEntryKind.ILIMODELFILE);
-        config.addFileEntry(file);
-        config.setAutoCompleteModelList(true);  
-        config.setGenerateWarnings(true);
-
-        TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
-        if (td == null) return data;
-
         
-        Model[] models = td.getModelsFromLastFile();
-        for (Model model : models) {
+        // 2. schedule compile in background if not cached  
+        TdCache.get(buffer).thenAccept(ast -> {
+            if (ast == null) return; // syntax error
+
+            System.err.println("**** thenAccept");
+
+            
+            // Re-parse the buffer on the EDT so SideKick can rebuild UI 
+            SwingUtilities.invokeLater(() -> 
+                SideKickPlugin.parse(jEdit.getActiveView(), true));
+            });
+
+        // 3. return empty tree right away – it will be replaced later 
+        return data;        
+        
+//        SideKickParsedData data = new SideKickParsedData(buffer.getName());
+//        DefaultMutableTreeNode root = data.root;
+//        
+//        Ili2cMetaAttrs ili2cMetaAttrs = new Ili2cMetaAttrs();
+//        
+//        String ilidirs = jEdit.getProperty(P_REPOS);
+//        if (ilidirs == null || ilidirs.isEmpty()) {
+//            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
+//        }
+//       
+//        Ili2cSettings settings = new Ili2cSettings();
+//        ch.interlis.ili2c.Main.setDefaultIli2cPathMap(settings);
+//        settings.setIlidirs(ilidirs);
+//
+//        Configuration config = new Configuration();
+//        FileEntry file = new FileEntry(buffer.getPath(), FileEntryKind.ILIMODELFILE);
+//        config.addFileEntry(file);
+//        config.setAutoCompleteModelList(true);  
+//        config.setGenerateWarnings(true);
+//
+//        TransferDescription td = ch.interlis.ili2c.Main.runCompiler(config, settings, ili2cMetaAttrs);
+//        if (td == null) return data;
+//
+//        
+//        Model[] models = td.getModelsFromLastFile();
+//        for (Model model : models) {
+//            DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
+//            root.add(mNode);
+//            
+//            var importedModels = model.getImporting();
+//            for (var importedModel : importedModels) {
+//                System.out.println("****" + importedModel.getFileName());
+//            }
+//            
+//            processContainer(buffer, model, mNode);
+//        }
+//                
+//        return data;    
+    }
+    
+    // Build the tree from an existing TransferDescription
+    private void buildTree(Buffer buffer, TransferDescription td, DefaultMutableTreeNode root) {
+
+        for (Model model : td.getModelsFromLastFile()) {
             DefaultMutableTreeNode mNode = node(buffer, model, "MODEL " + model.getName());
             root.add(mNode);
             
@@ -94,16 +144,12 @@ public class InterlisSideKickParser extends SideKickParser {
             for (var importedModel : importedModels) {
                 System.out.println("****" + importedModel.getFileName());
             }
-            
-            
-            
-            
+
             processContainer(buffer, model, mNode);
         }
-                
-        return data;    
     }
     
+
     private void processContainer(Buffer buffer, Container container, DefaultMutableTreeNode parentNode) {
         Iterator<?> iter = container.iterator();
         
