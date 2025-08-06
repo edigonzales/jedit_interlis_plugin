@@ -23,7 +23,7 @@ java -jar jedit.jar -log=3
 - outline/tree: icons (was hat umleditor?)
 - outline/tree: imported models (sonst noch was sinnvolles?).
 - ~~outline/tree: fehlermeldung in der konsole?~~
-- cache für td
+- cache für td./gradlew clean build copyPlugin -i && rm ~/Library/jEdit/jars-cache/InterlisPlugin.jar.summary
 - autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION

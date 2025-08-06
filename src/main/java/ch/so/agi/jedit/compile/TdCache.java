@@ -11,51 +11,48 @@ public final class TdCache {
 
     // one entry per *open* Buffer, garbage-collected when the buffer closes 
     private static final Map<Buffer, Entry> MAP = new WeakHashMap<>();
-    private static final ExecutorService BG = Executors.newSingleThreadExecutor();
     
-    // caller gets a Future – real parsing happens off the EDT 
+    // single background worker – ili2c is not thread-safe
+    private static final ExecutorService EXEC =
+            Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "ili2c-parser");
+                t.setDaemon(true);
+                return t;
+            });
+        
+    private TdCache() {} // static helper only
+    
+    // Return a Future; caller may block or attach a callback.
     public static Future<TransferDescription> get(Buffer buf) {
-        Entry e = MAP.get(buf);
-
         long rev = buf.getLastModified();
+        Entry e  = MAP.get(buf);
 
-        if (e != null && e.getRevision() == rev)
-            return e.getFuture(); // still valid
+        if (e != null && e.revision == rev) {
+            return e.future; // still valid (may be done)            
+        }
 
-        /* re-parse in background */
-        Future<TransferDescription> f = BG.submit(() -> Ili2cUtil.parse(buf));
+        // submit new parsing task
+        Future<TransferDescription> fut = EXEC.submit(() -> Ili2cUtil.run(buf, null, false).td());
 
-        MAP.put(buf, new Entry(rev, f));
-        return f;
+        MAP.put(buf, new Entry(rev, fut));
+        return fut;
     }
     
-    // optional: explicit invalidation when you know the buffer changed
+    // Store a TD explicitly (used by CompilerService after compile).
+    public static void put(Buffer buf, TransferDescription td) {
+        long rev = buf.getLastModified();
+        MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td)));
+    }
+    
+    // Invalidate when the buffer becomes dirty.
     public static void invalidate(Buffer buf) { MAP.remove(buf); }
     
-    private static class Entry {
-        private long revision;
-        
-        private Future<TransferDescription> future;
-        
-        public Entry(long revision, Future<TransferDescription> future) {
+    private static final class Entry {
+        final long  revision; // Buffer.getLastModified()
+        final Future<TransferDescription> future;
+        Entry(long revision, Future<TransferDescription> future) {
             this.revision = revision;
-            this.future = future;
+            this.future   = future;
         }
-        
-        public long getRevision() {
-            return revision;
-        }
-
-//        public void setRevision(long revision) {
-//            this.revision = revision;
-//        }
-//
-        public Future<TransferDescription> getFuture() {
-            return future;
-        }
-
-//        public void setFuture(Future<TransferDescription> future) {
-//            this.future = future;
-//        }
     }
 }
