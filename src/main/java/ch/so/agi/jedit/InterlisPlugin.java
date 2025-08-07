@@ -5,13 +5,15 @@ import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
 
 import ch.so.agi.jedit.compile.CompileService;
+import ch.so.agi.jedit.ui.AutoCloser;
 
 public class InterlisPlugin extends EBPlugin {
     private static final String PROP_COMPILE_ON_SAVE = "interlis.compileOnSave";
         
     @Override
     public void start() {
-        EditBus.addToBus(this);        
+        EditBus.addToBus(this);
+        AutoCloser.install();
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
     }
 

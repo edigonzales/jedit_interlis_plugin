@@ -84,7 +84,6 @@ public class InterlisSideKickParser extends SideKickParser {
 
             System.err.println("**** thenAccept");
 
-            
             // Re-parse the buffer on the EDT so SideKick can rebuild UI 
             SwingUtilities.invokeLater(() -> 
                 SideKickPlugin.parse(jEdit.getActiveView(), true));
