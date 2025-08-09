@@ -8,6 +8,10 @@ java -jar jedit.jar -log=3
 ./gradlew clean build copyPlugin -i && rm ~/Library/jEdit/jars-cache/InterlisPlugin.jar.summary
 ```
 
+## notes
+
+- TdCache funktioniert nur, wenn Modell gültig ist, da sond td==null ist.
+
 
 ## todo
 
@@ -28,3 +32,4 @@ java -jar jedit.jar -log=3
 - autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
 - autocomplete: TOPIC, CLASS, ASSOCIATION
 - Deployment? Wohin? Automatisch?
+- Default indent size: https://chat.qwen.ai/c/7e6814f6-b48d-4678-84e1-78e8cea0fe37

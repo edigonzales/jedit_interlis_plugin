@@ -34,6 +34,7 @@ public final class TdCache {
 
         if (e != null && e.revision == rev) {
             System.err.println("******* e != null && e.revision == rev");
+            System.err.println("**** e.index " + e.index);
             return e.future; // still valid           
         }
 
@@ -49,7 +50,9 @@ public final class TdCache {
                 synchronized (MAP) { // WeakHashMap not thread-safe
                     Entry entry = MAP.get(buf);
                     if (entry != null && entry.future == cf) {  // still the latest entry?
-                        MAP.put(buf, new Entry(rev, cf, result.log()));
+                        AstIndex idx = (result.td() != null) ? new AstIndex(buf, result.td()) : null;
+                        System.err.println("**** idx: " + idx);
+                        MAP.put(buf, new Entry(rev, cf, result.log(), idx));
                     }
                 }
             } catch (Exception ex) {
@@ -58,14 +61,15 @@ public final class TdCache {
         });
 
         // Initial muss log file null gesetzt werden. Es wird im try-Block ersetzt, falls es vorhanden ist.
-        MAP.put(buf, new Entry(rev, cf, null));
+        MAP.put(buf, new Entry(rev, cf, null, null));
         return cf;
     }
     
     // Store a TD explicitly (used by CompilerService after compile).
     public static void put(Buffer buf, TransferDescription td, Path log) {
         long rev = buf.getLastModified();
-        MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td), log));
+        AstIndex idx = (td != null) ? new AstIndex(buf, td) : null;
+        MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td), log, idx));
     }
     
     // Check if buffer is dirty. Handle accordingly.
@@ -101,6 +105,11 @@ public final class TdCache {
                ? e.log : null;
     }
     
+    public static AstIndex peekIndex(Buffer buf) {
+        Entry e = MAP.get(buf);
+        return (e != null && e.revision == buf.getLastModified()) ? e.index : null;
+    }
+    
     // Invalidate when the buffer becomes dirty.
     public static void invalidate(Buffer buf) { MAP.remove(buf); }
     
@@ -108,10 +117,13 @@ public final class TdCache {
         final long revision;
         final CompletableFuture<TransferDescription> future;
         final Path log; 
-        Entry(long revision, CompletableFuture<TransferDescription> future, Path log) {
+        final AstIndex index;
+      
+        Entry(long revision, CompletableFuture<TransferDescription> future, Path log, AstIndex index) {
             this.revision = revision;
             this.future = future;
             this.log = log;
+            this.index = index;
         }
     }
 }

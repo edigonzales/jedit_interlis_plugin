@@ -32,6 +32,7 @@ public final class CompileService {
 
             System.err.println("*** buffer is dirty 2: " + buffer.isDirty());
             System.err.println("*** log: " + log);
+            System.err.println("*** td: " + td);
             
             if (td != null && log != null) {
                 System.err.println("*** log und td ungleich null");
