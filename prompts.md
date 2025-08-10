@@ -96,3 +96,58 @@ Ok, thanks. For "VIEW TOPIC" the cursor should be just on whitespace after "DEPE
 
 
 --------
+
+
+Now let's implement MODEL. You will have to insert more text. Also between the model name the "=". There is actually one simple rule:
+
+"MODEL foo ="
+
+But them you will have to insert a lot of text. The result should look like this:
+
+"
+/** !!------------------------------------------------------------------------------
+ * !! Version    | wer | Änderung
+ * !!------------------------------------------------------------------------------
+ * !! 2025-08-10 | abr  | Initalversion
+ * !!==============================================================================
+ */
+!!@ technicalContact=mailto:acme@example.com
+!!@ furtherInformation=https://example.com/path/to/information
+!!@ title="a title"
+!!@ shortDescription="a short description"
+MODEL foo (de)
+AT "https://example.com"
+VERSION "2025-08-10"  =
+
+END foo;
+"
+
+Please use the current date for the dates ("2025-08-10"). Put the cursor on the empty line before END (just like with CLASS).
+
+
+---------
+
+
+Did you miss the empty (to be implemented) methods? And I also get his error: Local variable removeLen is required to be final or effectively final based on its usage
+
+
+---------
+
+
+Please show me the full code / full class with all your fixes.
+
+
+
+--------
+
+Some very small adjustments: Please indent AT and VERSION with two whitespaces and put the "=" on a new line.
+
+
+--------
+
+
+Ok. This is great. Now I want to implement the following: Some models import other models, e.g. GeometryCHLV95_V1. Now if a person types "GeometryCHLV95_V1." (see the trailing dot) jedit should suggest the elements of this model. And for convience. The names of the importet models should also be suggested. At the moment there are only the keywords in a list (KEYWORDS = List.of()) that is used for suggestions in the InterlisSideKickParser class. You probably want to add some of the logic in the TdCache class. Some methods that are usefull:
+
+"Model[] models = td.getModelsFromLastFile();": gets all models from the .ili file.
+"Model[] importedModels = model.getImporting();": gets all the models that a model imports
+
