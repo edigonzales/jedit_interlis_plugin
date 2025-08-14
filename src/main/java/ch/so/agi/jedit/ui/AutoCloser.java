@@ -333,44 +333,58 @@ public final class AutoCloser implements EBComponent, BufferListener {
         }
 
         /** KEYWORD [ '(' flags ')' ] IDENT [ EXTENDS IDENT ]   (consume to end) */
-        private static ParseResult tryHeaderSuffix(List<Token> toks, T keyword, Set<String> allowedFlags, Kind kind) {
-            int n = toks.size();
+        /** KEYWORD IDENT [ '(' flags ')' ] [ EXTENDS IDENT ]  (must end at tail end) */
+        private static ParseResult tryHeaderSuffix(List<Token> toks, T keyword,
+                                                   Set<String> allowedFlags, Kind kind) {
+            final int n = toks.size();
             for (int i = n - 1; i >= 0; i--) {
                 Token kw = toks.get(i);
                 if (kw.t != keyword) continue;
                 int p = i + 1;
 
-                // optional flags
-                if (p < n && toks.get(p).t == T.LPAREN) {
-                    p++;
-                    if (p >= n || !isAllowedFlag(toks.get(p), allowedFlags)) continue;
-                    p++;
-                    while (p < n && toks.get(p).t == T.COMMA) {
-                        p++;
-                        if (p >= n || !isAllowedFlag(toks.get(p), allowedFlags)) { p = -1; break; }
-                        p++;
-                    }
-                    if (p < 0 || p >= n || toks.get(p).t != T.RPAREN) continue;
-                    p++;
-                }
-
-                // name
+                // required IDENT (name)
                 if (p >= n || toks.get(p).t != T.IDENT) continue;
-                String name = toks.get(p).text;
-                int namePos = toks.get(p).pos;
-                int nameLen = name.length();
+                String name   = toks.get(p).text;
+                int namePos   = toks.get(p).pos;
+                int nameLen   = name.length();
                 p++;
 
-                // optional EXTENDS <ident>
+                // optional flags ONLY AFTER name (no flags allowed before name)
+                int p2 = parseOptionalFlags(toks, p, allowedFlags);
+                if (p2 == -1) continue;   // bad flags syntax
+                p = p2;
+
+                // optional EXTENDS IDENT
                 if (p < n && toks.get(p).t == T.EXTENDS) {
                     p++;
                     if (p >= n || toks.get(p).t != T.IDENT) continue;
                     p++;
                 }
 
-                if (p == n) return new ParseResult(kind, name, kw.pos, namePos, nameLen);
+                if (p == n) {
+                    return new ParseResult(kind, name, kw.pos, namePos, nameLen);
+                }
             }
             return null;
+        }
+        
+        /** If next token is '(', parse flag list "(FLAG[,FLAG]*)" with allowed flags.
+         *  Returns new index, same index if no '(', or -1 on syntax error. */
+        private static int parseOptionalFlags(List<Token> toks, int p, Set<String> allowed) {
+            final int n = toks.size();
+            if (p >= n || toks.get(p).t != T.LPAREN) return p; // none
+
+            int q = p + 1;
+            if (q >= n || !isAllowedFlag(toks.get(q), allowed)) return -1;
+            q++;
+            while (q < n && toks.get(q).t == T.COMMA) {
+                q++;
+                if (q >= n || !isAllowedFlag(toks.get(q), allowed)) return -1;
+                q++;
+            }
+            if (q >= n || toks.get(q).t != T.RPAREN) return -1;
+
+            return q + 1; // position after ')'
         }
 
         /** MODEL IDENT (must end at tail end) */

@@ -48,6 +48,7 @@ public final class CompileService {
             
             @Override protected Ili2cUtil.Result doInBackground() {
                 System.err.println("*** SwingWorker");
+                System.err.println("*** foo 1");
                 return Ili2cUtil.run(buffer, view, true);
             }
 
