@@ -194,78 +194,52 @@ public class InterlisSideKickParser extends SideKickParser {
 
     @Override
     public SideKickCompletion complete(EditPane editPane, int caret) {
-        System.err.println("*********** complete()");
         Buffer buf = editPane.getBuffer();
 
-        System.err.println("*********** complete() buffer is dirty: " + buf.isDirty());
-        
+        // Use the most recently completed TD (even if buffer is dirty)
         TransferDescription td = TdCache.peekLastValid(buf);
-        if (td == null) {
-            Log.log(Log.DEBUG, this, "No valid run yet for: " + buf.getName());
-            return null;
-        }
-        
-        System.err.println("*********** complete() 2");
-        
+        if (td == null) return null;
+
         int line = editPane.getTextArea().getCaretLine();
         int lineStart = buf.getLineStartOffset(line);
         int uptoCaret = Math.max(0, caret - lineStart);
         String lineText = buf.getText(lineStart, uptoCaret);
-        
-        System.err.println("*********** complete() 3");
 
-        // ---- DOT CONTEXT: ModelName.<prefix> ----
-        int lastDot = lineText.lastIndexOf('.');
+        // -------- dotted path context:  Model.Topic.Class.<prefix> -------------
+        String path = trailingPath(lineText);                 // e.g. "Model.Topic.Cl"
+        int lastDot = path.lastIndexOf('.');
         if (lastDot >= 0) {
-            String before = lineText.substring(0, lastDot);
-            String after  = lineText.substring(lastDot + 1); // member prefix
-            
-            System.err.println("before " + before);
-            System.err.println("after " + after);
+            String[] parts = path.split("\\.");
+            if (parts.length >= 2) {
+                String prefix = parts[parts.length - 1];      // typed AFTER last dot
+                if (prefix.length() == 0) return null;        // require ≥1 char
 
-            
-            //if (after.length() == 0) return null;            // need at least 1 char
+                // Resolve chain up to the parent container (everything before the last segment)
+                Object parent = resolveChain(td, parts, parts.length - 1);
+                if (parent == null) return null;
 
-            System.err.println("*********** complete() 4");
-            
-            String typedModel = lastIdentifier(before);
-            if (typedModel != null && !typedModel.isEmpty()) {
-                
-                System.err.println("*********** complete() 5");
+                // Collect immediate children names of that parent
+                List<String> children = collectChildrenNames(parent);
+                if (children.isEmpty()) return null;
 
-                String canonical = findCanonicalModelName(td, typedModel);
-                System.err.println("*********** complete() 6 (canonical model name)" + canonical);
-                List<String> members = TdCache.getMembersOfModel(buf, canonical); // top-level members of that model
-                System.err.println("members: " + members);
-                if (!members.isEmpty()) {
-                    List<String> matches = null;
-                    if (after.length() ==  0) {
-                        matches = members;
-                    } else {
-                        matches = startsWithFilterCI(members, after);                        
-                    }
-                    if (!matches.isEmpty()) {
-                        int start = caret - after.length();
-                        return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
-                    }
-                }
+                List<String> matches = startsWithFilterCI(children, prefix);
+                if (matches.isEmpty()) return null;
+
+                int start = caret - prefix.length();
+                return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
             }
-            return null; // dot context but we can't resolve → no generic list
+            return null;
         }
 
-        System.err.println("*********** complete() 10");
-
-        
-        // ---- PLAIN WORD: model names (local + direct imports) only ----
+        // -------- plain word context: model names only (require ≥1 char) --------
         String word = currentWord(lineText);
-        if (word.length() == 0) return null; // must type at least one character
+        if (word.length() == 0) return null;
 
         List<String> modelNames = modelNamesForBuffer(td);
-        System.err.println("modelNames: " + modelNames);
         List<String> matches = startsWithFilterCI(modelNames, word);
         if (matches.isEmpty()) return null;
 
-        // de-dup case-insensitively, keep display case
+        // de-dup (case-insensitive), preserve display case
         LinkedHashMap<String,String> uniq = new LinkedHashMap<>();
         for (String s : matches) {
             if (s == null) continue;
@@ -278,10 +252,19 @@ public class InterlisSideKickParser extends SideKickParser {
         int start = caret - word.length();
         return new KeywordCompletion(editPane.getView(), buf, start, caret, finalList);
     }
+    
+    /** Return the trailing identifier/dot path right before the caret, e.g. "Model.Topic.Cl". */
+    private static String trailingPath(String s) {
+        int i = s.length() - 1;
+        while (i >= 0) {
+            char c = s.charAt(i);
+            if (Character.isLetterOrDigit(c) || c == '_' || c == '.') i--;
+            else break;
+        }
+        return s.substring(i + 1); // may be empty
+    }
 
-    /* ============================== helpers =============================== */
-
-    // trailing word on the line (letters/digits/underscore)
+    /** trailing word on the line (letters/digits/underscore) */
     private static String currentWord(String s) {
         int i = s.length() - 1;
         while (i >= 0) {
@@ -291,30 +274,20 @@ public class InterlisSideKickParser extends SideKickParser {
         return s.substring(i + 1);
     }
 
-    // last identifier at end of string
-    private static String lastIdentifier(String s) {
-        int i = s.length() - 1;
-        while (i >= 0) {
-            char c = s.charAt(i);
-            if (Character.isLetterOrDigit(c) || c == '_') i--; else break;
-        }
-        int start = i + 1;
-        return (start < s.length()) ? s.substring(start) : null;
-    }
-
-    // case-insensitive startsWith, returns original-cased items
+    /** Case-insensitive startsWith; returns original-cased items. Requires prefix length ≥ 1. */
     private static List<String> startsWithFilterCI(List<String> items, String prefix) {
-        if (items == null || items.isEmpty()) return java.util.Collections.emptyList();
-        final String p = (prefix == null) ? "" : prefix.toUpperCase(java.util.Locale.ROOT);
+        if (items == null || items.isEmpty() || prefix == null || prefix.isEmpty())
+            return java.util.Collections.emptyList();
+        final String p = prefix.toUpperCase(java.util.Locale.ROOT);
         ArrayList<String> out = new ArrayList<>();
         for (String s : items) {
             if (s == null) continue;
-            if (!p.isEmpty() && s.toUpperCase(java.util.Locale.ROOT).startsWith(p)) out.add(s);
+            if (s.toUpperCase(java.util.Locale.ROOT).startsWith(p)) out.add(s);
         }
         return out;
     }
 
-    // Local model names + direct imported model names (preserve case).
+    /** Local model names + direct imported model names (preserve case). */
     private static List<String> modelNamesForBuffer(TransferDescription td) {
         if (td == null) return java.util.Collections.emptyList();
         LinkedHashSet<String> names = new LinkedHashSet<>();
@@ -330,23 +303,333 @@ public class InterlisSideKickParser extends SideKickParser {
         return new ArrayList<>(names);
     }
 
-    // Resolve typed model to canonical case from TD (local + direct imports). Fallback: typed.
-    private static String findCanonicalModelName(TransferDescription td, String typed) {
-        String t = typed.toUpperCase(java.util.Locale.ROOT);
-        for (Model m : td.getModelsFromLastFile()) {
-            String n = m.getName();
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
-        }
-        for (Model m : td.getModelsFromLastFile()) {
-            Model[] imps = m.getImporting();
-            if (imps == null) continue;
-            for (Model imp : imps) {
-                String n = (imp != null) ? imp.getName() : null;
-                if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
+    /* -------------------- resolution & children collection -------------------- */
+
+    /** Resolve a dotted chain up to (but not including) parts[stop] and return that parent node. */
+    private static Object resolveChain(TransferDescription td, String[] parts, int stop) {
+        if (stop <= 0) return null;                  // needs Model . ...
+        Model m = resolveModel(td, parts[0]);
+        if (m == null) return null;
+        Object cur = m;                              // can become Topic or Viewable as we descend
+
+        for (int i = 1; i < stop; i++) {
+            String name = parts[i];
+            if (cur instanceof Model) {
+                Element child = findChildInModelByName((Model)cur, name);
+                if (child == null) return null;
+                if (child instanceof Topic || child instanceof Viewable) {
+                    cur = child;                     // descend
+                } else {
+                    return null; // can’t descend into domains/units/functions
+                }
+            }
+            else if (cur instanceof Topic) {
+                Element child = findChildInContainerByName((Topic)cur, name);
+                if (child instanceof Viewable) cur = child; else return null;
+            }
+            else if (cur instanceof Viewable) {
+                // next link would be attribute/role name; we only descend when we suggest attributes
+                // i < stop implies there is something after; so require that name matches an attribute/role
+                if (!hasAttributeOrRole((Viewable)cur, name)) return null;
+                // Could descend further if you later want nested paths like a.b.c.attr.subattr
+                cur = /* attribute level reached */ cur;
+            }
+            else {
+                return null;
             }
         }
-        return typed;
+        return cur;
     }
+
+    /** Resolve model by name (case-insensitive), searching local models, then their imports (transitively). */
+    private static Model resolveModel(TransferDescription td, String name) {
+        if (td == null || name == null) return null;
+        String target = name.toUpperCase(java.util.Locale.ROOT);
+        // Prefer models declared in this file
+        for (Model m : td.getModelsFromLastFile()) {
+            String n = m.getName();
+            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(target)) return m;
+        }
+        // Then search imports transitively
+        for (Model m : td.getModelsFromLastFile()) {
+            Model found = findInImportsRecursive(m, target, new java.util.HashSet<Model>());
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private static Model findInImportsRecursive(Model m, String targetUpper, java.util.Set<Model> seen) {
+        if (m == null || !seen.add(m)) return null;
+        Model[] imps = m.getImporting();
+        if (imps == null) return null;
+        for (Model imp : imps) {
+            if (imp == null) continue;
+            String n = imp.getName();
+            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(targetUpper)) return imp;
+            Model found = findInImportsRecursive(imp, targetUpper, seen);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    /** Find a top-level child (Topic/Viewable/Domain/Unit/Function) by name, case-insensitive. */
+    private static Element findChildInModelByName(Model model, String name) {
+        String t = name.toUpperCase(java.util.Locale.ROOT);
+        for (Iterator<?> it = model.iterator(); it.hasNext();) {
+            Object o = it.next();
+            if (!(o instanceof Element)) continue;
+            Element e = (Element)o;
+            String n = e.getName();
+            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
+                return e;
+        }
+        return null;
+    }
+
+    /** Find a child by name inside a Container (e.g., Topic). */
+    private static Element findChildInContainerByName(Container container, String name) {
+        String t = name.toUpperCase(java.util.Locale.ROOT);
+        for (Iterator<?> it = container.iterator(); it.hasNext();) {
+            Object o = it.next();
+            if (!(o instanceof Element)) continue;
+            Element e = (Element)o;
+            String n = e.getName();
+            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
+                return e;
+        }
+        return null;
+    }
+
+    /** Does this Viewable have an attribute or role with that name? */
+    private static boolean hasAttributeOrRole(Viewable v, String name) {
+        String t = name.toUpperCase(java.util.Locale.ROOT);
+        for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
+            ViewableTransferElement ve = (ViewableTransferElement) it.next();
+            Object obj = ve.obj;
+            String n = null;
+            if (obj instanceof AttributeDef) {
+                n = ((AttributeDef)obj).getName();
+            } else {
+                // Roles etc. (if you want explicit RoleDef import, handle here)
+                System.err.println("**************** WTF reflection: Warum????");
+                try { n = (String) obj.getClass().getMethod("getName").invoke(obj); }
+                catch (Exception ignore) {}
+            }
+            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return true;
+        }
+        return false;
+    }
+
+    /** Immediate children names of a parent node for completion. */
+    private static List<String> collectChildrenNames(Object parent) {
+        ArrayList<String> out = new ArrayList<>();
+        if (parent instanceof Model) {
+            Model m = (Model) parent;
+            for (Iterator<?> it = m.iterator(); it.hasNext();) {
+                Object o = it.next();
+                if (!(o instanceof Element)) continue;
+                Element e = (Element)o;
+                String n = e.getName();
+                if (n == null) continue;
+                if (e instanceof Topic
+                 || e instanceof Viewable
+                 || e instanceof Domain
+                 || e instanceof ch.interlis.ili2c.metamodel.Unit
+                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
+                    out.add(n);
+                }
+            }
+        } else if (parent instanceof Topic) {
+            Topic t = (Topic) parent;
+            for (Iterator<?> it = t.iterator(); it.hasNext();) {
+                Object o = it.next();
+                if (!(o instanceof Element)) continue;
+                Element e = (Element)o;
+                String n = e.getName();
+                if (n == null) continue;
+                if (e instanceof Viewable
+                 || e instanceof Domain
+                 || e instanceof ch.interlis.ili2c.metamodel.Unit
+                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
+                    out.add(n);
+                }
+            }
+        } else if (parent instanceof Viewable) {
+            Viewable v = (Viewable) parent;
+            for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
+                ViewableTransferElement ve = (ViewableTransferElement) it.next();
+                Object obj = ve.obj;
+                if (obj instanceof AttributeDef) {
+                    String n = ((AttributeDef)obj).getName();
+                    if (n != null) out.add(n);
+                } else {
+                    // RoleDef etc. via reflection to avoid new imports
+                    try {
+                        System.err.println("**************** WTF reflection: Warum????");
+                        String n = (String) obj.getClass().getMethod("getName").invoke(obj);
+                        if (n != null) out.add(n);
+                    } catch (Exception ignore) {}
+                }
+            }
+        }
+        return out;
+    }
+    
+//    @Override
+//    public SideKickCompletion complete(EditPane editPane, int caret) {
+//        System.err.println("*********** complete()");
+//        Buffer buf = editPane.getBuffer();
+//
+//        System.err.println("*********** complete() buffer is dirty: " + buf.isDirty());
+//        
+//        TransferDescription td = TdCache.peekLastValid(buf);
+//        if (td == null) {
+//            Log.log(Log.DEBUG, this, "No valid run yet for: " + buf.getName());
+//            return null;
+//        }
+//        
+//        System.err.println("*********** complete() 2");
+//        
+//        int line = editPane.getTextArea().getCaretLine();
+//        int lineStart = buf.getLineStartOffset(line);
+//        int uptoCaret = Math.max(0, caret - lineStart);
+//        String lineText = buf.getText(lineStart, uptoCaret);
+//        
+//        System.err.println("*********** complete() 3");
+//
+//        // ---- DOT CONTEXT: ModelName.<prefix> ----
+//        int lastDot = lineText.lastIndexOf('.');
+//        if (lastDot >= 0) {
+//            String before = lineText.substring(0, lastDot);
+//            String after  = lineText.substring(lastDot + 1); // member prefix
+//            
+//            System.err.println("before " + before);
+//            System.err.println("after " + after);
+//
+//            
+//            //if (after.length() == 0) return null;            // need at least 1 char
+//
+//            System.err.println("*********** complete() 4");
+//            
+//            String typedModel = lastIdentifier(before);
+//            if (typedModel != null && !typedModel.isEmpty()) {
+//                
+//                System.err.println("*********** complete() 5");
+//
+//                String canonical = findCanonicalModelName(td, typedModel);
+//                System.err.println("*********** complete() 6 (canonical model name)" + canonical);
+//                List<String> members = TdCache.getMembersOfModel(buf, canonical); // top-level members of that model
+//                System.err.println("members: " + members);
+//                if (!members.isEmpty()) {
+//                    List<String> matches = null;
+//                    if (after.length() ==  0) {
+//                        matches = members;
+//                    } else {
+//                        matches = startsWithFilterCI(members, after);                        
+//                    }
+//                    if (!matches.isEmpty()) {
+//                        int start = caret - after.length();
+//                        return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
+//                    }
+//                }
+//            }
+//            return null; // dot context but we can't resolve → no generic list
+//        }
+//
+//        System.err.println("*********** complete() 10");
+//
+//        
+//        // ---- PLAIN WORD: model names (local + direct imports) only ----
+//        String word = currentWord(lineText);
+//        if (word.length() == 0) return null; // must type at least one character
+//
+//        List<String> modelNames = modelNamesForBuffer(td);
+//        System.err.println("modelNames: " + modelNames);
+//        List<String> matches = startsWithFilterCI(modelNames, word);
+//        if (matches.isEmpty()) return null;
+//
+//        // de-dup case-insensitively, keep display case
+//        LinkedHashMap<String,String> uniq = new LinkedHashMap<>();
+//        for (String s : matches) {
+//            if (s == null) continue;
+//            String key = s.toUpperCase(java.util.Locale.ROOT);
+//            uniq.putIfAbsent(key, s);
+//        }
+//        ArrayList<String> finalList = new ArrayList<>(uniq.values());
+//        finalList.sort(String.CASE_INSENSITIVE_ORDER);
+//
+//        int start = caret - word.length();
+//        return new KeywordCompletion(editPane.getView(), buf, start, caret, finalList);
+//    }
+
+//    /* ============================== helpers =============================== */
+//
+//    // trailing word on the line (letters/digits/underscore)
+//    private static String currentWord(String s) {
+//        int i = s.length() - 1;
+//        while (i >= 0) {
+//            char c = s.charAt(i);
+//            if (Character.isLetterOrDigit(c) || c == '_') i--; else break;
+//        }
+//        return s.substring(i + 1);
+//    }
+//
+//    // last identifier at end of string
+//    private static String lastIdentifier(String s) {
+//        int i = s.length() - 1;
+//        while (i >= 0) {
+//            char c = s.charAt(i);
+//            if (Character.isLetterOrDigit(c) || c == '_') i--; else break;
+//        }
+//        int start = i + 1;
+//        return (start < s.length()) ? s.substring(start) : null;
+//    }
+//
+//    // case-insensitive startsWith, returns original-cased items
+//    private static List<String> startsWithFilterCI(List<String> items, String prefix) {
+//        if (items == null || items.isEmpty()) return java.util.Collections.emptyList();
+//        final String p = (prefix == null) ? "" : prefix.toUpperCase(java.util.Locale.ROOT);
+//        ArrayList<String> out = new ArrayList<>();
+//        for (String s : items) {
+//            if (s == null) continue;
+//            if (!p.isEmpty() && s.toUpperCase(java.util.Locale.ROOT).startsWith(p)) out.add(s);
+//        }
+//        return out;
+//    }
+//
+//    // Local model names + direct imported model names (preserve case).
+//    private static List<String> modelNamesForBuffer(TransferDescription td) {
+//        if (td == null) return java.util.Collections.emptyList();
+//        LinkedHashSet<String> names = new LinkedHashSet<>();
+//        for (Model m : td.getModelsFromLastFile()) {
+//            if (m.getName() != null) names.add(m.getName());
+//            Model[] imps = m.getImporting();
+//            if (imps != null) {
+//                for (Model imp : imps) {
+//                    if (imp != null && imp.getName() != null) names.add(imp.getName());
+//                }
+//            }
+//        }
+//        return new ArrayList<>(names);
+//    }
+//
+//    // Resolve typed model to canonical case from TD (local + direct imports). Fallback: typed.
+//    private static String findCanonicalModelName(TransferDescription td, String typed) {
+//        String t = typed.toUpperCase(java.util.Locale.ROOT);
+//        for (Model m : td.getModelsFromLastFile()) {
+//            String n = m.getName();
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
+//        }
+//        for (Model m : td.getModelsFromLastFile()) {
+//            Model[] imps = m.getImporting();
+//            if (imps == null) continue;
+//            for (Model imp : imps) {
+//                String n = (imp != null) ? imp.getName() : null;
+//                if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
+//            }
+//        }
+//        return typed;
+//    }
 
     /* ============================ insertion =============================== */
 
