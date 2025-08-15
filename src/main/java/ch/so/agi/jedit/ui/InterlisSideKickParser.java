@@ -14,6 +14,7 @@ import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
+import org.gjt.sp.util.Log;
 
 import errorlist.DefaultErrorSource;
 import sidekick.Asset;
@@ -76,7 +77,8 @@ public class InterlisSideKickParser extends SideKickParser {
         // nicht mehr gültig, weil sich die Datei geändert hat (auf
         // dem Filesystem).
         TransferDescription td = TdCache.peek(buffer);
-        System.err.println("ist td null (= stale or missing)? " + td);
+        Log.log(Log.DEBUG, this, "TransferDescription is stale or missing.");
+        System.err.println("ist td null (= stale or missing)? ");
 
         if (td != null) { // cached & up-to-date
             System.err.println("td ist nicht null: " + td.getLastModel());
@@ -197,14 +199,11 @@ public class InterlisSideKickParser extends SideKickParser {
 
         System.err.println("*********** complete() buffer is dirty: " + buf.isDirty());
         
-        // TODO: nicht sicher, ob richtig.
-        // Ich möchte glaubs die letzte erfolgreiche Kompilierung, damit ich
-        // wenigstens suggestion/completen kann. Mir ist nicht ganz klar, was
-        // peekLatest zurückliefert.
-        // oder vielleicht doch richtig. es darf einfach hier definitiv keine 
-        // Kompilierung auslösen.
-        TransferDescription td = TdCache.peekLatest(buf);
-        if (td == null) return null;
+        TransferDescription td = TdCache.peekLastValid(buf);
+        if (td == null) {
+            Log.log(Log.DEBUG, this, "No valid run yet for: " + buf.getName());
+            return null;
+        }
         
         System.err.println("*********** complete() 2");
         
@@ -235,6 +234,7 @@ public class InterlisSideKickParser extends SideKickParser {
                 System.err.println("*********** complete() 6 (canonical model name)" + canonical);
                 // Wahrscheinlich liegt hier der Hund begraben, weil wir den Buffer für was verwenden, der geändert hat.
                 List<String> members = TdCache.getMembersOfModel(buf, canonical); // top-level members of that model
+                System.err.println("members: " + members);
                 if (!members.isEmpty()) {
                     List<String> matches = startsWithFilterCI(members, after);
                     if (!matches.isEmpty()) {

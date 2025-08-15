@@ -12,6 +12,7 @@ import ch.interlis.ili2c.metamodel.Viewable;
 import ch.so.agi.jedit.compile.Ili2cUtil.Result;
 
 import org.gjt.sp.jedit.*;
+import org.gjt.sp.util.Log;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public final class TdCache {
 
     // one entry per *open* Buffer, garbage-collected when the buffer closes 
     private static final Map<Buffer, Entry> MAP = new WeakHashMap<>();
+    private static final Map<Buffer, TransferDescription> MAP_LAST_VALID = new WeakHashMap<>();
     
     // single background worker – ili2c is not thread-safe
     private static final ExecutorService EXEC =
@@ -68,6 +70,10 @@ public final class TdCache {
                     Entry entry = MAP.get(buf);
                     if (entry != null && entry.future == cf) {  // still the latest entry?
                         MAP.put(buf, new Entry(rev, cf, result.log()));
+                        if (cf.get() != null) {
+                            Log.log(Log.DEBUG, TdCache.class, "Modell ist valide und TransferDescription wird in spezieller Map gespeichert");
+                            MAP_LAST_VALID.put(buf, cf.get());    
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -116,6 +122,28 @@ public final class TdCache {
         } catch (Exception ex) {
             return null; // failed → treat as absent
         }
+    }
+    
+    public static TransferDescription peekLastValid(Buffer buf) {
+        TransferDescription td = MAP_LAST_VALID.get(buf);
+        
+        if (td != null) {
+            return td;
+        }
+        
+        // Wenn td null ist, wurde noch gar nie kompiliert oder
+        // aber es gab nie ein gültiges Modell. Trotzdem 
+        // versuchen wir es noch einmalig zu komplieren.
+        CompletableFuture<TransferDescription> cf = get(buf);
+        try {
+            if (cf.get() != null) {
+                return cf.get();
+            }            
+        } catch (Exception e) {
+            cf.completeExceptionally(e);
+        }
+        
+        return null;
     }
     
     // Nicht sicher, ob richtig und/oder sinnvoll.
@@ -177,9 +205,7 @@ public final class TdCache {
 
     // Top-level member names of a given model (topics, domains, units, functions, viewables).
     public static List<String> getMembersOfModel(Buffer buf, String modelName) {
-        // TODO: Das will ich eigentlich nicht, dass er ggf. neu kompiliert, da es ja Fehler haben kann.
-        // FIXME
-        TransferDescription td = peek(buf);
+        TransferDescription td = peekLastValid(buf);
         if (td == null) return Collections.emptyList();
 
         Model target = findModelByName(td, modelName);
@@ -198,7 +224,7 @@ public final class TdCache {
             if (!(o instanceof Element)) continue;
             Element e = (Element) o;
             String name = e.getName();
-            System.out.println("**** collectTopLevelNames: " + name);
+            //System.out.println("**** collectTopLevelNames: " + name);
             if (name == null) continue;
 
             if (e instanceof Topic
@@ -211,8 +237,10 @@ public final class TdCache {
         }
     }
     
-    // Invalidate when the buffer becomes dirty.
-    public static void invalidate(Buffer buf) { MAP.remove(buf); }
+    public static void invalidate(Buffer buf) { 
+        MAP_LAST_VALID.remove(buf);
+        MAP.remove(buf); 
+    }
     
     private static final class Entry {
         final long revision;
