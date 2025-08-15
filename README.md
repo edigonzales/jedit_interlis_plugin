@@ -25,11 +25,13 @@ java -jar jedit.jar -log=3
 - options: ~~ilidirs!!~~
 - ~~Fokus sollte nach kompilieren nicht in der Shell sein.~~
 - outline/tree: icons (was hat umleditor?)
-- outline/tree: imported models (sonst noch was sinnvolles?).
+- outline/tree: ~~~imported models~~ (sonst noch was sinnvolles?).
 - ~~outline/tree: fehlermeldung in der konsole?~~
-- cache für td
-- autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare
-- autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute
-- autocomplete: TOPIC, CLASS, ASSOCIATION
+- ~~cache für td~~
+- ~~autocomplete: INTERLIS 2.4 <shift+enter> -> Kommentare~~
+- ~~autocomplete: MODEL .. <shift+enter> -> oberhalb die Metattribute~~
+- autocomplete: ~~TOPIC, CLASS,~~ ASSOCIATION
 - Deployment? Wohin? Automatisch?
-- Default indent size: https://chat.qwen.ai/c/7e6814f6-b48d-4678-84e1-78e8cea0fe37
+- ~~Default indent size: https://chat.qwen.ai/c/7e6814f6-b48d-4678-84e1-78e8cea0fe37~~
+- Modelle zum Importieren vorschlagen 
+- 

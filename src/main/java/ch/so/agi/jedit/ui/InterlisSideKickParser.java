@@ -206,31 +206,45 @@ public class InterlisSideKickParser extends SideKickParser {
         String lineText = buf.getText(lineStart, uptoCaret);
 
         // -------- dotted path context:  Model.Topic.Class.<prefix> -------------
-        String path = trailingPath(lineText);                 // e.g. "Model.Topic.Cl"
+        String path = trailingPath(lineText);                 // e.g. "Model.Topic.Cl" or "Model.Topic."
+        String[] parts = path.split("\\.", -1);               // PRESERVE trailing empty segment
         int lastDot = path.lastIndexOf('.');
-        if (lastDot >= 0) {
-            String[] parts = path.split("\\.");
-            if (parts.length >= 2) {
-                String prefix = parts[parts.length - 1];      // typed AFTER last dot
-                if (prefix.length() == 0) return null;        // require ≥1 char
+        if (lastDot >= 0 && parts.length >= 2) {
+            String prefix = parts[parts.length - 1];          // text after the last dot
+            System.err.println("**** prefix:" + prefix + "********");
+            if (prefix.isEmpty()) {
+                // RULE: require at least one character after the dot
+                //return null;
 
-                // Resolve chain up to the parent container (everything before the last segment)
-                Object parent = resolveChain(td, parts, parts.length - 1);
-                if (parent == null) return null;
-
-                // Collect immediate children names of that parent
-                List<String> children = collectChildrenNames(parent);
-                if (children.isEmpty()) return null;
-
-                List<String> matches = startsWithFilterCI(children, prefix);
-                if (matches.isEmpty()) return null;
-
-                int start = caret - prefix.length();
-                return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
+                // If you prefer to show all children on a trailing dot, comment the return above
+                // and uncomment the next line to remember the last non-empty segment for filtering:
+                //String lastNonEmpty = parts[parts.length - 2];
             }
-            return null;
-        }
 
+            // Resolve chain up to the parent container (everything before the last segment)
+            Object parent = resolveChain(td, parts, parts.length - 1);
+            if (parent == null) return null;
+
+            // Collect immediate children of that parent
+            List<String> children = collectChildrenNames(parent);
+            if (children.isEmpty()) return null;
+
+            // Optional: if you enabled popup on empty prefix, filter out the last non-empty segment
+            //children.removeIf(s -> s.equalsIgnoreCase(parts[parts.length - 2]));
+
+          List<String> matches = null;
+          if (prefix.length() ==  0) {
+              matches = children;
+          } else {
+              matches = startsWithFilterCI(children, prefix);                        
+          }
+
+            if (matches.isEmpty()) return null;
+
+            int start = caret - prefix.length();
+            return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
+        }
+        
         // -------- plain word context: model names only (require ≥1 char) --------
         String word = currentWord(lineText);
         if (word.length() == 0) return null;
@@ -440,6 +454,7 @@ public class InterlisSideKickParser extends SideKickParser {
                 }
             }
         } else if (parent instanceof Topic) {
+            System.err.println("****** parent ist topic");
             Topic t = (Topic) parent;
             for (Iterator<?> it = t.iterator(); it.hasNext();) {
                 Object o = it.next();
@@ -465,7 +480,7 @@ public class InterlisSideKickParser extends SideKickParser {
                 } else {
                     // RoleDef etc. via reflection to avoid new imports
                     try {
-                        System.err.println("**************** WTF reflection: Warum????");
+                        System.err.println("**************** good lord reflection: Warum????");
                         String n = (String) obj.getClass().getMethod("getName").invoke(obj);
                         if (n != null) out.add(n);
                     } catch (Exception ignore) {}

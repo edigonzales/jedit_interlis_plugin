@@ -7,4 +7,7 @@
     <SERVICE CLASS="sidekick.SideKickParser" NAME="interlis_parser">
          new ch.so.agi.jedit.ui.InterlisSideKickParser();
     </SERVICE>
+    <SERVICE CLASS="gatchan.jedit.hyperlinks.HyperlinkSource" NAME="interlis_hyperlink">
+        new ch.so.agi.jedit.ui.InterlisHyperlinkSource();
+    </SERVICE>
  </SERVICES>
