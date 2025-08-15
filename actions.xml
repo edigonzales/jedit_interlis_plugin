@@ -23,4 +23,9 @@
             ch.so.agi.jedit.format.PrettyPrintService.prettyPrint(view, buffer);
         </CODE>
     </ACTION>
+    <ACTION NAME="interlis-show-uml">
+        <CODE>
+            ch.so.agi.jedit.ui.UmlWindow.show(view);
+        </CODE>
+    </ACTION>
 </ACTIONS>
