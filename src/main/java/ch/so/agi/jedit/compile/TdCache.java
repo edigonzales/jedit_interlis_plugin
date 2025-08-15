@@ -145,34 +145,7 @@ public final class TdCache {
         
         return null;
     }
-    
-    // Nicht sicher, ob richtig und/oder sinnvoll.
-    
-    // Return the most recently completed TD even if the buffer is dirty.
-    // Useful for code completion while typing.
-    
-    // Dünkt mich schon nicht korrekt. f.get() ist null weil es einfach den letzten oder so nimmt.
-    // Ich will den letzten erfolgreichen -> braucht wohl einfach eine weiter MAP_LAST_SUCCESS?
-    public static TransferDescription peekLatest(Buffer buf) {
-        System.out.println("***** Peek Latest");
-        Entry e = MAP.get(buf);
-        if (e == null) {
-            System.out.println("***** e=null");
-            return null;
-        }
-        CompletableFuture<TransferDescription> f = e.future;
-        if (f == null || !f.isDone()) {
-            System.out.println("***** f == null || !f.isDone()");
-            return null;
-        }
-        try {
-            System.out.println("***** f.get() " + f.get());
-            return f.get(); // completed successfully
-        } catch (Exception ex) {
-            return null; // failed or cancelled
-        }
-    }
-    
+        
     public static Path peekLog(Buffer buf) {
         Entry e = MAP.get(buf);
         return (e != null && e.revision == buf.getLastModified())

@@ -219,11 +219,14 @@ public class InterlisSideKickParser extends SideKickParser {
         if (lastDot >= 0) {
             String before = lineText.substring(0, lastDot);
             String after  = lineText.substring(lastDot + 1); // member prefix
-            //if (after.length() == 0) return null;            // need at least 1 char
+            
+            System.err.println("before " + before);
+            System.err.println("after " + after);
 
             
-            System.err.println("*********** complete() 4");
+            //if (after.length() == 0) return null;            // need at least 1 char
 
+            System.err.println("*********** complete() 4");
             
             String typedModel = lastIdentifier(before);
             if (typedModel != null && !typedModel.isEmpty()) {
@@ -232,11 +235,15 @@ public class InterlisSideKickParser extends SideKickParser {
 
                 String canonical = findCanonicalModelName(td, typedModel);
                 System.err.println("*********** complete() 6 (canonical model name)" + canonical);
-                // Wahrscheinlich liegt hier der Hund begraben, weil wir den Buffer für was verwenden, der geändert hat.
                 List<String> members = TdCache.getMembersOfModel(buf, canonical); // top-level members of that model
                 System.err.println("members: " + members);
                 if (!members.isEmpty()) {
-                    List<String> matches = startsWithFilterCI(members, after);
+                    List<String> matches = null;
+                    if (after.length() ==  0) {
+                        matches = members;
+                    } else {
+                        matches = startsWithFilterCI(members, after);                        
+                    }
                     if (!matches.isEmpty()) {
                         int start = caret - after.length();
                         return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
