@@ -23,9 +23,15 @@
             ch.so.agi.jedit.format.PrettyPrintService.prettyPrint(view, buffer);
         </CODE>
     </ACTION>
-    <ACTION NAME="interlis-show-uml">
-        <CODE>
-            ch.so.agi.jedit.ui.UmlWindow.show(view);
-        </CODE>
-    </ACTION>
+  <ACTION NAME="interlis-uml-show">
+    <CODE>
+      view.getDockableWindowManager().showDockableWindow("interlis-uml");
+    </CODE>
+  </ACTION>
+
+  <ACTION NAME="interlis-uml-toggle">
+    <CODE>
+      view.getDockableWindowManager().toggleDockableWindow("interlis-uml");
+    </CODE>
+  </ACTION>
 </ACTIONS>

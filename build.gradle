@@ -58,6 +58,7 @@ jar {
     archiveFileName = 'InterlisPlugin.jar'
     from('InterlisPlugin.props')
     from('services.xml')
+    from('dockables.xml')
     from('actions.xml') {
         into('/')
     }

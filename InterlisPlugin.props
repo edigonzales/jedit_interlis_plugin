@@ -17,13 +17,14 @@ plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
     toggleCompileOnSave \
     prettyPrintCurrentFile \
     sidekick.parser.interlis_parser-switch \
-    interlis-show-uml
+    interlis-uml-show
     
 # Action labels
 compileCurrentFile.label=Compile current file
 toggleCompileOnSave.label=Toggle compile on save
 prettyPrintCurrentFile.label=Pretty print current file
-interlis-show-uml.label=Show UML diagram
+interlis-uml-show.label=Show UML diagram
+interlis-uml-toggle.label=Toggle UML diagram
 
 # Messages
 not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)
@@ -57,3 +58,6 @@ mode.interlis.sidekick.parser=interlis_parser
 
 # hyperlink
 mode.interlis.hyperlink.source=interlis_hyperlink
+
+# title
+interlis-uml.title=INTERLIS - UML diagram
