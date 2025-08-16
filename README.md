@@ -35,3 +35,4 @@ java -jar jedit.jar -log=3
 - ~~Default indent size: https://chat.qwen.ai/c/7e6814f6-b48d-4678-84e1-78e8cea0fe37~~
 - Edit: Modelle zum Importieren vorschlagen 
 - Hyperlink: Auch für Topics, Klassen etc. (weiss nicht wie schwierig das ist).
+- UML: als dockable window.
