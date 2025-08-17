@@ -14,6 +14,7 @@ public class InterlisPlugin extends EBPlugin {
     public void start() {
         EditBus.addToBus(this);
         AutoCloser.install();
+        ModelDiscoveryService.initialize();
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
     }
 
