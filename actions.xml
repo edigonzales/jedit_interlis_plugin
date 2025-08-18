@@ -34,4 +34,10 @@
       view.getDockableWindowManager().toggleDockableWindow("interlis-uml");
     </CODE>
   </ACTION>
+  
+    <ACTION NAME="interlis-collect-keywords">
+        <CODE>
+            ch.so.agi.jedit.keywords.ModelKeywordCollector.collectToNewBuffer(view);
+        </CODE>
+    </ACTION>
 </ACTIONS>

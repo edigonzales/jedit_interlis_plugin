@@ -17,6 +17,7 @@ plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
     toggleCompileOnSave \
     prettyPrintCurrentFile \
     sidekick.parser.interlis_parser-switch \
+    interlis-collect-keywords \
     interlis-uml-show
     
 # Action labels
@@ -25,6 +26,7 @@ toggleCompileOnSave.label=Toggle compile on save
 prettyPrintCurrentFile.label=Pretty print current file
 interlis-uml-show.label=Show UML diagram
 interlis-uml-toggle.label=Toggle UML diagram
+interlis-collect-keywords.label=Collect model keywords
 
 # Messages
 not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)
@@ -33,6 +35,8 @@ compiler-exception.message=Compiler exception:\n{0}
 console-missing.message=Console is missing
 shell-not-registered.message=Shell is not registered:\n{0}
 buffer-not-saved.message=There are unsaved changes in the current buffer
+interlis-collector-no-td.title=No compiled model available
+interlis-collector-no-td.message=Please compile the file once before collecting keywords.
 
 # Options / Settings
 # user‑changeable defaults 
