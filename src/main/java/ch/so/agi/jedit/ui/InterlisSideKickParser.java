@@ -39,6 +39,8 @@ import ch.so.agi.jedit.compile.TdCache;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import ch.so.agi.jedit.InterlisAstUtil;
 import ch.so.agi.jedit.ModelDiscoveryService;
 
 public class InterlisSideKickParser extends SideKickParser {
@@ -244,7 +246,7 @@ public class InterlisSideKickParser extends SideKickParser {
             if (parent == null) return null;
 
             // Collect immediate children of that parent
-            List<String> children = collectChildrenNames(parent);
+            List<String> children = InterlisAstUtil.collectChildrenNames(parent);
             if (children.isEmpty()) return null;
 
             // Optional: if you enabled popup on empty prefix, filter out the last non-empty segment
@@ -340,14 +342,14 @@ public class InterlisSideKickParser extends SideKickParser {
     /** Resolve a dotted chain up to (but not including) parts[stop] and return that parent node. */
     private static Object resolveChain(TransferDescription td, String[] parts, int stop) {
         if (stop <= 0) return null;                  // needs Model . ...
-        Model m = resolveModel(td, parts[0]);
+        Model m = InterlisAstUtil.resolveModel(td, parts[0]);
         if (m == null) return null;
         Object cur = m;                              // can become Topic or Viewable as we descend
 
         for (int i = 1; i < stop; i++) {
             String name = parts[i];
             if (cur instanceof Model) {
-                Element child = findChildInModelByName((Model)cur, name);
+                Element child = InterlisAstUtil.findChildInModelByName((Model)cur, name);
                 if (child == null) return null;
                 if (child instanceof Topic || child instanceof Viewable) {
                     cur = child;                     // descend
@@ -356,13 +358,13 @@ public class InterlisSideKickParser extends SideKickParser {
                 }
             }
             else if (cur instanceof Topic) {
-                Element child = findChildInContainerByName((Topic)cur, name);
+                Element child = InterlisAstUtil.findChildInContainerByName((Topic)cur, name);
                 if (child instanceof Viewable) cur = child; else return null;
             }
             else if (cur instanceof Viewable) {
                 // next link would be attribute/role name; we only descend when we suggest attributes
                 // i < stop implies there is something after; so require that name matches an attribute/role
-                if (!hasAttributeOrRole((Viewable)cur, name)) return null;
+                if (!InterlisAstUtil.hasAttributeOrRole((Viewable)cur, name)) return null;
                 // Could descend further if you later want nested paths like a.b.c.attr.subattr
                 cur = /* attribute level reached */ cur;
             }
@@ -373,140 +375,140 @@ public class InterlisSideKickParser extends SideKickParser {
         return cur;
     }
 
-    /** Resolve model by name (case-insensitive), searching local models, then their imports (transitively). */
-    private static Model resolveModel(TransferDescription td, String name) {
-        if (td == null || name == null) return null;
-        String target = name.toUpperCase(java.util.Locale.ROOT);
-        // Prefer models declared in this file
-        for (Model m : td.getModelsFromLastFile()) {
-            String n = m.getName();
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(target)) return m;
-        }
-        // Then search imports transitively
-        for (Model m : td.getModelsFromLastFile()) {
-            Model found = findInImportsRecursive(m, target, new java.util.HashSet<Model>());
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    private static Model findInImportsRecursive(Model m, String targetUpper, java.util.Set<Model> seen) {
-        if (m == null || !seen.add(m)) return null;
-        Model[] imps = m.getImporting();
-        if (imps == null) return null;
-        for (Model imp : imps) {
-            if (imp == null) continue;
-            String n = imp.getName();
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(targetUpper)) return imp;
-            Model found = findInImportsRecursive(imp, targetUpper, seen);
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    /** Find a top-level child (Topic/Viewable/Domain/Unit/Function) by name, case-insensitive. */
-    private static Element findChildInModelByName(Model model, String name) {
-        String t = name.toUpperCase(java.util.Locale.ROOT);
-        for (Iterator<?> it = model.iterator(); it.hasNext();) {
-            Object o = it.next();
-            if (!(o instanceof Element)) continue;
-            Element e = (Element)o;
-            String n = e.getName();
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
-                return e;
-        }
-        return null;
-    }
-
-    /** Find a child by name inside a Container (e.g., Topic). */
-    private static Element findChildInContainerByName(Container container, String name) {
-        String t = name.toUpperCase(java.util.Locale.ROOT);
-        for (Iterator<?> it = container.iterator(); it.hasNext();) {
-            Object o = it.next();
-            if (!(o instanceof Element)) continue;
-            Element e = (Element)o;
-            String n = e.getName();
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
-                return e;
-        }
-        return null;
-    }
-
-    /** Does this Viewable have an attribute or role with that name? */
-    private static boolean hasAttributeOrRole(Viewable v, String name) {
-        String t = name.toUpperCase(java.util.Locale.ROOT);
-        for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
-            ViewableTransferElement ve = (ViewableTransferElement) it.next();
-            Object obj = ve.obj;
-            String n = null;
-            if (obj instanceof AttributeDef) {
-                n = ((AttributeDef)obj).getName();
-            } else {
-                // Roles etc. (if you want explicit RoleDef import, handle here)
-                System.err.println("**************** WTF reflection: Warum????");
-                try { n = (String) obj.getClass().getMethod("getName").invoke(obj); }
-                catch (Exception ignore) {}
-            }
-            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return true;
-        }
-        return false;
-    }
-
-    /** Immediate children names of a parent node for completion. */
-    private static List<String> collectChildrenNames(Object parent) {
-        ArrayList<String> out = new ArrayList<>();
-        if (parent instanceof Model) {
-            Model m = (Model) parent;
-            for (Iterator<?> it = m.iterator(); it.hasNext();) {
-                Object o = it.next();
-                if (!(o instanceof Element)) continue;
-                Element e = (Element)o;
-                String n = e.getName();
-                if (n == null) continue;
-                if (e instanceof Topic
-                 || e instanceof Viewable
-                 || e instanceof Domain
-                 || e instanceof ch.interlis.ili2c.metamodel.Unit
-                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
-                    out.add(n);
-                }
-            }
-        } else if (parent instanceof Topic) {
-            System.err.println("****** parent ist topic");
-            Topic t = (Topic) parent;
-            for (Iterator<?> it = t.iterator(); it.hasNext();) {
-                Object o = it.next();
-                if (!(o instanceof Element)) continue;
-                Element e = (Element)o;
-                String n = e.getName();
-                if (n == null) continue;
-                if (e instanceof Viewable
-                 || e instanceof Domain
-                 || e instanceof ch.interlis.ili2c.metamodel.Unit
-                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
-                    out.add(n);
-                }
-            }
-        } else if (parent instanceof Viewable) {
-            Viewable v = (Viewable) parent;
-            for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
-                ViewableTransferElement ve = (ViewableTransferElement) it.next();
-                Object obj = ve.obj;
-                if (obj instanceof AttributeDef) {
-                    String n = ((AttributeDef)obj).getName();
-                    if (n != null) out.add(n);
-                } else {
-                    // RoleDef etc. via reflection to avoid new imports
-                    try {
-                        System.err.println("**************** good lord reflection: Warum????");
-                        String n = (String) obj.getClass().getMethod("getName").invoke(obj);
-                        if (n != null) out.add(n);
-                    } catch (Exception ignore) {}
-                }
-            }
-        }
-        return out;
-    }
+//    /** Resolve model by name (case-insensitive), searching local models, then their imports (transitively). */
+//    private static Model resolveModel(TransferDescription td, String name) {
+//        if (td == null || name == null) return null;
+//        String target = name.toUpperCase(java.util.Locale.ROOT);
+//        // Prefer models declared in this file
+//        for (Model m : td.getModelsFromLastFile()) {
+//            String n = m.getName();
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(target)) return m;
+//        }
+//        // Then search imports transitively
+//        for (Model m : td.getModelsFromLastFile()) {
+//            Model found = findInImportsRecursive(m, target, new java.util.HashSet<Model>());
+//            if (found != null) return found;
+//        }
+//        return null;
+//    }
+//
+//    private static Model findInImportsRecursive(Model m, String targetUpper, java.util.Set<Model> seen) {
+//        if (m == null || !seen.add(m)) return null;
+//        Model[] imps = m.getImporting();
+//        if (imps == null) return null;
+//        for (Model imp : imps) {
+//            if (imp == null) continue;
+//            String n = imp.getName();
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(targetUpper)) return imp;
+//            Model found = findInImportsRecursive(imp, targetUpper, seen);
+//            if (found != null) return found;
+//        }
+//        return null;
+//    }
+//
+//    /** Find a top-level child (Topic/Viewable/Domain/Unit/Function) by name, case-insensitive. */
+//    private static Element findChildInModelByName(Model model, String name) {
+//        String t = name.toUpperCase(java.util.Locale.ROOT);
+//        for (Iterator<?> it = model.iterator(); it.hasNext();) {
+//            Object o = it.next();
+//            if (!(o instanceof Element)) continue;
+//            Element e = (Element)o;
+//            String n = e.getName();
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
+//                return e;
+//        }
+//        return null;
+//    }
+//
+//    /** Find a child by name inside a Container (e.g., Topic). */
+//    private static Element findChildInContainerByName(Container container, String name) {
+//        String t = name.toUpperCase(java.util.Locale.ROOT);
+//        for (Iterator<?> it = container.iterator(); it.hasNext();) {
+//            Object o = it.next();
+//            if (!(o instanceof Element)) continue;
+//            Element e = (Element)o;
+//            String n = e.getName();
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
+//                return e;
+//        }
+//        return null;
+//    }
+//
+//    /** Does this Viewable have an attribute or role with that name? */
+//    private static boolean hasAttributeOrRole(Viewable v, String name) {
+//        String t = name.toUpperCase(java.util.Locale.ROOT);
+//        for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
+//            ViewableTransferElement ve = (ViewableTransferElement) it.next();
+//            Object obj = ve.obj;
+//            String n = null;
+//            if (obj instanceof AttributeDef) {
+//                n = ((AttributeDef)obj).getName();
+//            } else {
+//                // Roles etc. (if you want explicit RoleDef import, handle here)
+//                System.err.println("**************** WTF reflection: Warum????");
+//                try { n = (String) obj.getClass().getMethod("getName").invoke(obj); }
+//                catch (Exception ignore) {}
+//            }
+//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return true;
+//        }
+//        return false;
+//    }
+//
+//    /** Immediate children names of a parent node for completion. */
+//    private static List<String> collectChildrenNames(Object parent) {
+//        ArrayList<String> out = new ArrayList<>();
+//        if (parent instanceof Model) {
+//            Model m = (Model) parent;
+//            for (Iterator<?> it = m.iterator(); it.hasNext();) {
+//                Object o = it.next();
+//                if (!(o instanceof Element)) continue;
+//                Element e = (Element)o;
+//                String n = e.getName();
+//                if (n == null) continue;
+//                if (e instanceof Topic
+//                 || e instanceof Viewable
+//                 || e instanceof Domain
+//                 || e instanceof ch.interlis.ili2c.metamodel.Unit
+//                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
+//                    out.add(n);
+//                }
+//            }
+//        } else if (parent instanceof Topic) {
+//            System.err.println("****** parent ist topic");
+//            Topic t = (Topic) parent;
+//            for (Iterator<?> it = t.iterator(); it.hasNext();) {
+//                Object o = it.next();
+//                if (!(o instanceof Element)) continue;
+//                Element e = (Element)o;
+//                String n = e.getName();
+//                if (n == null) continue;
+//                if (e instanceof Viewable
+//                 || e instanceof Domain
+//                 || e instanceof ch.interlis.ili2c.metamodel.Unit
+//                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
+//                    out.add(n);
+//                }
+//            }
+//        } else if (parent instanceof Viewable) {
+//            Viewable v = (Viewable) parent;
+//            for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
+//                ViewableTransferElement ve = (ViewableTransferElement) it.next();
+//                Object obj = ve.obj;
+//                if (obj instanceof AttributeDef) {
+//                    String n = ((AttributeDef)obj).getName();
+//                    if (n != null) out.add(n);
+//                } else {
+//                    // RoleDef etc. via reflection to avoid new imports
+//                    try {
+//                        System.err.println("**************** good lord reflection: Warum????");
+//                        String n = (String) obj.getClass().getMethod("getName").invoke(obj);
+//                        if (n != null) out.add(n);
+//                    } catch (Exception ignore) {}
+//                }
+//            }
+//        }
+//        return out;
+//    }
     
     private static final Pattern IMPORTS_WORD = Pattern.compile("(?i)\\bIMPORTS\\b");
 

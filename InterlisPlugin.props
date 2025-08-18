@@ -39,12 +39,14 @@ buffer-not-saved.message=There are unsaved changes in the current buffer
 interlis.repos.default=%ILI_DIR;https://models.interlis.ch;%JAR_DIR
 interlis.proxyHost.default=
 interlis.proxyPort.default=
+interlis.openai.base-url.default="https://api.openai.com/v1"
 
 # (these are used only the first time; afterwards the user’s edits
 # are stored under the same keys WITHOUT the .default suffix)
 interlis.repos=%ILI_DIR;https://models.interlis.ch;%JAR_DIR
 interlis.proxyHost=
 interlis.proxyPort=
+interlis.openai.base-url=https://api.openai.com/v1
 
 # register the option pane
 plugin.ch.so.agi.jedit.InterlisPlugin.option-pane=interlis
