@@ -1,5 +1,7 @@
 package ch.so.agi.jedit;
 
+import javax.swing.SwingWorker;
+
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
@@ -14,7 +16,14 @@ public class InterlisPlugin extends EBPlugin {
     public void start() {
         EditBus.addToBus(this);
         AutoCloser.install();
-        ModelDiscoveryService.initialize();
+        new SwingWorker<Object, Void>() {
+            @Override
+            protected Object doInBackground() throws Exception {
+                ModelDiscoveryService.initialize();
+                return null;
+            }
+        };
+        
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] started");
     }
 
