@@ -1,6 +1,7 @@
 package ch.so.agi.jedit.ui;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,6 +37,10 @@ import ch.interlis.ili2c.metamodel.ViewableTransferElement;
 
 import ch.so.agi.jedit.compile.TdCache;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import ch.so.agi.jedit.ModelDiscoveryService;
+
 public class InterlisSideKickParser extends SideKickParser {
 
     public InterlisSideKickParser() {
@@ -49,22 +54,6 @@ public class InterlisSideKickParser extends SideKickParser {
     // - beim Öffnen von Sidekick (also des Trees ("Outline"))
     @Override
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
-//        // Always return quickly with whatever we have in the cache.
-//        final SideKickParsedData data = new SideKickParsedData(buffer.getName());
-//        final DefaultMutableTreeNode root = data.root;
-//
-//        System.err.println("****** parse()");
-//        
-//        TransferDescription td = TdCache.peek(buffer); // non-blocking, maybe null
-//        if (td != null) {
-//            buildTree(buffer, td, root);
-//            return data;
-//        }
-//
-//        // If TD isn’t available (e.g., unsaved changes), do not trigger a compile here.
-//        // When your CompileService pushes a new TD to TdCache, SideKick can be told to re-parse:
-//        //   SideKickPlugin.parse(jEdit.getActiveView(), true);
-//        return data;
         
         // 0. Create an (initially empty) tree. 
         final SideKickParsedData data = new SideKickParsedData(buffer.getName());
@@ -204,6 +193,35 @@ public class InterlisSideKickParser extends SideKickParser {
         int lineStart = buf.getLineStartOffset(line);
         int uptoCaret = Math.max(0, caret - lineStart);
         String lineText = buf.getText(lineStart, uptoCaret);
+        
+        
+     // -------- IMPORTS clause context (now also on empty prefix) --------------
+        ImportsInfo imp = findImportsContext(buf, caret);
+        if (imp != null) {
+            // Build query: empty prefix → list everything via "*", otherwise prefix+"*"
+            String query = imp.prefix.isEmpty() ? "*" : (imp.prefix + "*");
+
+            java.util.List<String> found = ModelDiscoveryService.searchModelsByName(query);
+            if (found == null) found = Collections.emptyList();
+
+            // Filter out models already listed in this IMPORTS clause (case-insensitive)
+            java.util.HashSet<String> already = new java.util.HashSet<>();
+            for (String a : imp.already) if (a != null)
+                already.add(a.toUpperCase(java.util.Locale.ROOT));
+
+            java.util.ArrayList<String> items = new java.util.ArrayList<>();
+            for (String s : found) {
+                if (s == null) continue;
+                if (!already.contains(s.toUpperCase(java.util.Locale.ROOT))) items.add(s);
+            }
+
+            if (!items.isEmpty()) {
+                items.sort(String.CASE_INSENSITIVE_ORDER);
+                // Replace only the current token (may be empty) starting at imp.prefixStartAbs
+                return new KeywordCompletion(editPane.getView(), buf, imp.prefixStartAbs, caret, items);
+            }
+            return null; // we're in IMPORTS context, but nothing to suggest
+        }
 
         // -------- dotted path context:  Model.Topic.Class.<prefix> -------------
         String path = trailingPath(lineText);                 // e.g. "Model.Topic.Cl" or "Model.Topic."
@@ -490,161 +508,65 @@ public class InterlisSideKickParser extends SideKickParser {
         return out;
     }
     
-//    @Override
-//    public SideKickCompletion complete(EditPane editPane, int caret) {
-//        System.err.println("*********** complete()");
-//        Buffer buf = editPane.getBuffer();
-//
-//        System.err.println("*********** complete() buffer is dirty: " + buf.isDirty());
-//        
-//        TransferDescription td = TdCache.peekLastValid(buf);
-//        if (td == null) {
-//            Log.log(Log.DEBUG, this, "No valid run yet for: " + buf.getName());
-//            return null;
-//        }
-//        
-//        System.err.println("*********** complete() 2");
-//        
-//        int line = editPane.getTextArea().getCaretLine();
-//        int lineStart = buf.getLineStartOffset(line);
-//        int uptoCaret = Math.max(0, caret - lineStart);
-//        String lineText = buf.getText(lineStart, uptoCaret);
-//        
-//        System.err.println("*********** complete() 3");
-//
-//        // ---- DOT CONTEXT: ModelName.<prefix> ----
-//        int lastDot = lineText.lastIndexOf('.');
-//        if (lastDot >= 0) {
-//            String before = lineText.substring(0, lastDot);
-//            String after  = lineText.substring(lastDot + 1); // member prefix
-//            
-//            System.err.println("before " + before);
-//            System.err.println("after " + after);
-//
-//            
-//            //if (after.length() == 0) return null;            // need at least 1 char
-//
-//            System.err.println("*********** complete() 4");
-//            
-//            String typedModel = lastIdentifier(before);
-//            if (typedModel != null && !typedModel.isEmpty()) {
-//                
-//                System.err.println("*********** complete() 5");
-//
-//                String canonical = findCanonicalModelName(td, typedModel);
-//                System.err.println("*********** complete() 6 (canonical model name)" + canonical);
-//                List<String> members = TdCache.getMembersOfModel(buf, canonical); // top-level members of that model
-//                System.err.println("members: " + members);
-//                if (!members.isEmpty()) {
-//                    List<String> matches = null;
-//                    if (after.length() ==  0) {
-//                        matches = members;
-//                    } else {
-//                        matches = startsWithFilterCI(members, after);                        
-//                    }
-//                    if (!matches.isEmpty()) {
-//                        int start = caret - after.length();
-//                        return new KeywordCompletion(editPane.getView(), buf, start, caret, matches);
-//                    }
-//                }
-//            }
-//            return null; // dot context but we can't resolve → no generic list
-//        }
-//
-//        System.err.println("*********** complete() 10");
-//
-//        
-//        // ---- PLAIN WORD: model names (local + direct imports) only ----
-//        String word = currentWord(lineText);
-//        if (word.length() == 0) return null; // must type at least one character
-//
-//        List<String> modelNames = modelNamesForBuffer(td);
-//        System.err.println("modelNames: " + modelNames);
-//        List<String> matches = startsWithFilterCI(modelNames, word);
-//        if (matches.isEmpty()) return null;
-//
-//        // de-dup case-insensitively, keep display case
-//        LinkedHashMap<String,String> uniq = new LinkedHashMap<>();
-//        for (String s : matches) {
-//            if (s == null) continue;
-//            String key = s.toUpperCase(java.util.Locale.ROOT);
-//            uniq.putIfAbsent(key, s);
-//        }
-//        ArrayList<String> finalList = new ArrayList<>(uniq.values());
-//        finalList.sort(String.CASE_INSENSITIVE_ORDER);
-//
-//        int start = caret - word.length();
-//        return new KeywordCompletion(editPane.getView(), buf, start, caret, finalList);
-//    }
+    private static final Pattern IMPORTS_WORD = Pattern.compile("(?i)\\bIMPORTS\\b");
 
-//    /* ============================== helpers =============================== */
-//
-//    // trailing word on the line (letters/digits/underscore)
-//    private static String currentWord(String s) {
-//        int i = s.length() - 1;
-//        while (i >= 0) {
-//            char c = s.charAt(i);
-//            if (Character.isLetterOrDigit(c) || c == '_') i--; else break;
-//        }
-//        return s.substring(i + 1);
-//    }
-//
-//    // last identifier at end of string
-//    private static String lastIdentifier(String s) {
-//        int i = s.length() - 1;
-//        while (i >= 0) {
-//            char c = s.charAt(i);
-//            if (Character.isLetterOrDigit(c) || c == '_') i--; else break;
-//        }
-//        int start = i + 1;
-//        return (start < s.length()) ? s.substring(start) : null;
-//    }
-//
-//    // case-insensitive startsWith, returns original-cased items
-//    private static List<String> startsWithFilterCI(List<String> items, String prefix) {
-//        if (items == null || items.isEmpty()) return java.util.Collections.emptyList();
-//        final String p = (prefix == null) ? "" : prefix.toUpperCase(java.util.Locale.ROOT);
-//        ArrayList<String> out = new ArrayList<>();
-//        for (String s : items) {
-//            if (s == null) continue;
-//            if (!p.isEmpty() && s.toUpperCase(java.util.Locale.ROOT).startsWith(p)) out.add(s);
-//        }
-//        return out;
-//    }
-//
-//    // Local model names + direct imported model names (preserve case).
-//    private static List<String> modelNamesForBuffer(TransferDescription td) {
-//        if (td == null) return java.util.Collections.emptyList();
-//        LinkedHashSet<String> names = new LinkedHashSet<>();
-//        for (Model m : td.getModelsFromLastFile()) {
-//            if (m.getName() != null) names.add(m.getName());
-//            Model[] imps = m.getImporting();
-//            if (imps != null) {
-//                for (Model imp : imps) {
-//                    if (imp != null && imp.getName() != null) names.add(imp.getName());
-//                }
-//            }
-//        }
-//        return new ArrayList<>(names);
-//    }
-//
-//    // Resolve typed model to canonical case from TD (local + direct imports). Fallback: typed.
-//    private static String findCanonicalModelName(TransferDescription td, String typed) {
-//        String t = typed.toUpperCase(java.util.Locale.ROOT);
-//        for (Model m : td.getModelsFromLastFile()) {
-//            String n = m.getName();
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
-//        }
-//        for (Model m : td.getModelsFromLastFile()) {
-//            Model[] imps = m.getImporting();
-//            if (imps == null) continue;
-//            for (Model imp : imps) {
-//                String n = (imp != null) ? imp.getName() : null;
-//                if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return n;
-//            }
-//        }
-//        return typed;
-//    }
+    /** Info for completion inside an IMPORTS clause. */
+    private static final class ImportsInfo {
+        final int prefixStartAbs;    // absolute offset of the token we’ll replace
+        final String prefix;         // the currently typed token (trimmed)
+        final List<String> already;  // other model names in this clause (before the current token)
+        ImportsInfo(int start, String p, List<String> a) {
+            this.prefixStartAbs = start; this.prefix = p; this.already = a;
+        }
+    }
+    
+    /**
+     * If the caret is within an IMPORTS ... ; clause, returns the current token
+     * to complete and the already-listed model names. Otherwise returns null.
+     */
+    private static ImportsInfo findImportsContext(Buffer buf, int caret) {
+        // Look back a reasonable window (stop early at previous ';' if found)
+        final int LOOKBACK = 2000;
+        int start = Math.max(0, caret - LOOKBACK);
+        String tail = buf.getText(start, caret - start);
+
+        // Last "IMPORTS" word before the caret
+        int impStart = -1, impEnd = -1;
+        Matcher m = IMPORTS_WORD.matcher(tail);
+        while (m.find()) { impStart = m.start(); impEnd = m.end(); }
+        if (impStart < 0) return null;
+
+        // If there is a ';' after IMPORTS (still in the tail), we’re past the clause → no context
+        if (tail.indexOf(';', impStart) >= 0) return null;
+
+        // Part between IMPORTS and caret
+        String segment = tail.substring(impEnd); // may contain multiple names, commas, spaces
+
+        // The current token starts after the last comma
+        int lastComma = segment.lastIndexOf(',');
+        int tokenRelStart = (lastComma >= 0) ? lastComma + 1 : 0;
+
+        // Skip leading spaces in the token
+        int p = tokenRelStart;
+        while (p < segment.length() && Character.isWhitespace(segment.charAt(p))) p++;
+
+        int prefixStartAbs = start + impEnd + p;
+        String prefix = segment.substring(p).trim(); // token being typed
+
+        // Collect already-listed model names (everything before the current token)
+        ArrayList<String> already = new ArrayList<>();
+        String before = segment.substring(0, p).trim(); // up to start of the token
+        if (!before.isEmpty()) {
+            String[] parts = before.split(",");
+            for (String s : parts) {
+                String name = s.trim();
+                if (!name.isEmpty()) already.add(name);
+            }
+        }
+        
+        return new ImportsInfo(prefixStartAbs, prefix, already);
+    }
+    
 
     /* ============================ insertion =============================== */
 

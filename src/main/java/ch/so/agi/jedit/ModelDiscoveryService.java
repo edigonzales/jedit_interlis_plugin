@@ -21,7 +21,7 @@ public class ModelDiscoveryService {
     private static final String P_REPOS = "interlis.repos";
 
     // Thread-safe cache for model metadata
-    private static final Map<String, ModelMetadata> modelCache = new ConcurrentHashMap<>();
+    private static final Map<String, ModelMetadata> MODEL_CACHE = new ConcurrentHashMap<>();
     private static boolean initialized = false;
 
 
@@ -62,6 +62,11 @@ public class ModelDiscoveryService {
                       
             List<ModelMetadata> latestMergedModelMetadatav = RepositoryAccess.getLatestVersions2(mergedModelMetadatav);
             System.err.println("**************************** latestMergedModelMetadatav: " + latestMergedModelMetadatav.size());
+            
+            for (ModelMetadata mmd : latestMergedModelMetadatav) {
+                MODEL_CACHE.put(mmd.getName(), mmd);
+            }
+            
         } catch (RepositoryAccessException e) {
             e.printStackTrace();
             Log.log(Log.ERROR, ModelDiscoveryService.class, "Error while fetching repositories: " + e.getMessage());
@@ -100,22 +105,22 @@ public class ModelDiscoveryService {
        return dummyModels;
    }
     
-    public List<ModelMetadata> searchModelsByName(String searchTerm) {
+    public static List<String> searchModelsByName(String searchTerm) {
         if (!initialized) {
             throw new IllegalStateException("Service not initialized. Call initialize() first.");
         }
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return new ArrayList<>(modelCache.values());
+            return new ArrayList<>(MODEL_CACHE.keySet());
         }
         
         String normalizedSearchTerm = searchTerm.trim().toLowerCase();
         boolean hasWildcard = normalizedSearchTerm.endsWith("*");
         String prefix = hasWildcard ? normalizedSearchTerm.substring(0, normalizedSearchTerm.length() - 1) : normalizedSearchTerm;
         
-        List<ModelMetadata> results = new ArrayList<>();
+        List<String> results = new ArrayList<>();
         
-        for (Map.Entry<String, ModelMetadata> entry : modelCache.entrySet()) {
+        for (Map.Entry<String, ModelMetadata> entry : MODEL_CACHE.entrySet()) {
             String modelName = entry.getKey().toLowerCase();
             
             boolean matches = hasWildcard ? 
@@ -123,19 +128,19 @@ public class ModelDiscoveryService {
                 modelName.equals(prefix);
                 
             if (matches) {
-                results.add(entry.getValue());
+                results.add(entry.getKey());
             }
         }
         
         return results;
     }
 
-    public ModelMetadata getModelByName(String modelName) {
+    public static ModelMetadata getModelByName(String modelName) {
         if (!initialized) {
             throw new IllegalStateException("Service not initialized. Call initialize() first.");
         }
         
-        return modelName != null ? modelCache.get(modelName) : null;
+        return modelName != null ? MODEL_CACHE.get(modelName) : null;
     }
 
     public Collection<ModelMetadata> getAllModels() {
@@ -143,11 +148,11 @@ public class ModelDiscoveryService {
             throw new IllegalStateException("Service not initialized. Call initialize() first.");
         }
         
-        return Collections.unmodifiableCollection(modelCache.values());
+        return Collections.unmodifiableCollection(MODEL_CACHE.values());
     }
 
     public int getCacheSize() {
-        return modelCache.size();
+        return MODEL_CACHE.size();
     }
 
     public boolean isInitialized() {
