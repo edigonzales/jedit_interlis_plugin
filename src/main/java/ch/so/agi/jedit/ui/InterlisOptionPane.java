@@ -12,6 +12,7 @@ public class InterlisOptionPane extends AbstractOptionPane {
     private static final String P_PROXYHOST = "interlis.proxyHost";
     private static final String P_PROXYPORT = "interlis.proxyPort";
     private static final String P_OPENAI_BASE_URL = "interlis.openai.base-url";
+    private static final String P_OPENAI_MODEL = "interlis.openai.model";
     private static final String P_OPENAI_API_KEY = "interlis.openai.api-key";
 
     private JTextField reposFld;
@@ -19,6 +20,7 @@ public class InterlisOptionPane extends AbstractOptionPane {
     private JTextField portFld;
 
     private JTextField openaiBaseUrlFld;
+    private JTextField openaiModelFld;
     private JTextField openaiApiKeyFld;
 
     public InterlisOptionPane() {
@@ -43,6 +45,11 @@ public class InterlisOptionPane extends AbstractOptionPane {
                     jEdit.getProperty(P_OPENAI_BASE_URL,
                         jEdit.getProperty(P_OPENAI_BASE_URL + ".default")));
 
+            System.err.println("************************* " + jEdit.getProperty(P_OPENAI_MODEL));
+            openaiModelFld  = new JTextField(
+                    jEdit.getProperty(P_OPENAI_MODEL,
+                        jEdit.getProperty(P_OPENAI_MODEL + ".default")));
+            
             openaiApiKeyFld  = new JTextField(
                     jEdit.getProperty(P_OPENAI_API_KEY,
                         jEdit.getProperty(P_OPENAI_API_KEY + ".default")));
@@ -51,6 +58,7 @@ public class InterlisOptionPane extends AbstractOptionPane {
             addComponent("HTTP proxy host:", hostFld);
             addComponent("HTTP proxy port:", portFld);
             addComponent("OpenAI Base URL:", openaiBaseUrlFld);
+            addComponent("OpenAI Model:", openaiModelFld);
             addComponent("OpenAI API Key:", openaiApiKeyFld);
     }
     
@@ -60,6 +68,7 @@ public class InterlisOptionPane extends AbstractOptionPane {
         jEdit.setProperty(P_PROXYHOST, hostFld.getText().trim());
         jEdit.setProperty(P_PROXYPORT, portFld.getText().trim());
         jEdit.setProperty(P_OPENAI_BASE_URL, openaiBaseUrlFld.getText().trim());
+        jEdit.setProperty(P_OPENAI_MODEL, openaiModelFld.getText().trim());
         jEdit.setProperty(P_OPENAI_API_KEY, openaiApiKeyFld.getText().trim());
     }
 }

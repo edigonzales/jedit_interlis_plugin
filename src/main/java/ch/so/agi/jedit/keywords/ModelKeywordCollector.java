@@ -1,5 +1,6 @@
 package ch.so.agi.jedit.keywords;
 
+import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.metamodel.Element;
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
@@ -13,7 +14,19 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
 
 import javax.swing.SwingUtilities;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 /**
  * Collects simple model metadata (names + documentation) and writes XML to a new buffer.
@@ -40,6 +53,9 @@ import java.util.Iterator;
  * </metadata>
  */
 public final class ModelKeywordCollector {
+    private static final String P_OPENAI_BASE_URL = "interlis.openai.base-url";
+    private static final String P_OPENAI_MODEL = "interlis.openai.model";
+    private static final String P_OPENAI_API_KEY = "interlis.openai.api-key";
 
     private ModelKeywordCollector() {}
 
@@ -50,12 +66,48 @@ public final class ModelKeywordCollector {
         // We use the last valid (saved/compiled) TD; if none, ask the user to compile.
         TransferDescription td = TdCache.peekLastValid(src);
         if (td == null) {
-            GUIUtilities.error(view, "interlis.collect.no-td", null);
+            GUIUtilities.error(view, "interlis-collect-no-td", null);
             return;
         }
 
         final String xml = buildXml(td);
+        
+        String prompt = readPromptFile();
+        if (prompt == null) {
+            GUIUtilities.error(view, "interlis-collect-no-prompt", null);
+            return;
+        }
+        prompt += xml;
+        
+        String apiUrl = jEdit.getProperty(P_OPENAI_BASE_URL);
+        if (apiUrl == null) {
+            GUIUtilities.error(view, "interlis-collect-no-api-url", null);
+            return;
+        }
+        
+        String apiKey = jEdit.getProperty(P_OPENAI_API_KEY);
+        if (apiKey == null) {
+            GUIUtilities.error(view, "interlis-collect-no-api-key", null);
+            return;
+        }
+        
+        String modelName = jEdit.getProperty(P_OPENAI_MODEL);
+        if (modelName == null) {
+            GUIUtilities.error(view, "interlis-collect-no-model", null);
+            return;
+        }
 
+        String response = null;
+        try {
+            response = callOpenAI(apiUrl, apiKey, modelName);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            GUIUtilities.error(view, "interlis-collect-openai-error", null);
+            return;
+        }
+
+        System.err.println(response);
+        
         SwingUtilities.invokeLater(() -> {
             Buffer out = jEdit.newFile(view);
             out.setMode(jEdit.getMode("xml"));
@@ -167,6 +219,41 @@ public final class ModelKeywordCollector {
     
     /* ============================== helpers ============================== */
 
+    public static String callOpenAI(String apiUrl, String apiKey, String modelName) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        
+        String requestBody = "{\n" +
+                "    \"model\": \"gpt-3.5-turbo\",\n" +
+                "    \"input\": [\n" +
+                
+                
+                
+                
+                
+                
+                "        {\n" +
+                "            \"role\": \"user\",\n" +
+                "            \"content\": \"Return the following XML exactly as provided: <model name=\\\"Hazard_Mapping_LV95_V1_3\\\">de:Naturgefahren,fr:Dangers naturels,it:Pericoli naturali,en:Natural hazards,de:Gefahrenkarte,fr:Carte des dangers,it:Mappa dei pericoli,en:Hazard map,de:Gefahrengebiet,fr:Zone de danger,it:Zona di pericolo,en:Hazard area,de:Gefahrenbeurteilung,fr:Évaluation des dangers,it:Valutazione dei pericoli,en:Hazard assessment,de:Perimeter,fr:Périmètre,it:Perimetro,en:Assessment area,de:Überflutung,fr:Inondation,it:Inondazione,en:Flooding,de:Hochwasser,fr:Crue,it:Piena,en:High water,de:Fliessgeschwindigkeit,fr:Vitesse d’écoulement,it:Velocità di flusso,en:Flow velocity,de:Wassertiefe,fr:Profondeur d’eau,it:Profondità dell’acqua,en:Water depth,de:Murgang,fr:Lave torrentielle,it:Colata detritica,en:Debris flow,de:Prozessintensität,fr:Intensité du processus,it:Intensità del processo,en:Process intensity,de:Gefahrenstufe,fr:Niveau de danger,it:Livello di pericolo,en:Hazard level,de:Indikatives Gefahrengebiet,fr:Zone indicative de danger,it:Zona di pericolo indicativa,en:Indicative hazard area,de:Synoptische Intensität,fr:Intensité synoptique,it:Intensità sinottica,en:Synoptic intensity,de:Besonderes Gefahrengebiet,fr:Zone spéciale de danger,it:Zona speciale di pericolo,en:Special hazard area</model>\"\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}";
+        
+        System.err.println("**** requestBody: " + requestBody);
+        System.err.println("**** apiUrl: " + apiUrl);
+        
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        
+        HttpResponse<String> response = client.send(request, 
+                HttpResponse.BodyHandlers.ofString());
+        
+        return response.body();
+    }
+
     private static String trimOrNull(String s) {
         if (s == null) return null;
         String t = s.trim();
@@ -194,5 +281,18 @@ public final class ModelKeywordCollector {
     private static StringBuilder indent(StringBuilder sb, int level) {
         for (int i = 0; i < level; i++) sb.append("  ");
         return sb;
+    }
+    
+    private static String readPromptFile()  {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        try (InputStream in = cl.getResourceAsStream("prompt.txt")) {
+            if (in == null) {
+                return null;
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
