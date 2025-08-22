@@ -1,6 +1,5 @@
 package ch.so.agi.jedit.keywords;
 
-import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.metamodel.Element;
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
@@ -15,23 +14,17 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
 import org.json.JSONObject;
 
-import javax.swing.SwingUtilities;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
-import java.util.stream.Collectors;
 
 /**
- * Collects simple model metadata (names + documentation) and writes XML to a new buffer.
+ * Todo....
  *
  * <metadata>
  *   <model name="..." >
@@ -102,8 +95,6 @@ public final class ModelKeywordCollector {
         final String promptCopy = prompt;
         ModelDiscoveryWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));        
     }
-
-    /* ============================== XML builder ============================== */
 
     private static String buildXml(TransferDescription td) {
         StringBuilder sb = new StringBuilder(8192);
@@ -205,9 +196,49 @@ public final class ModelKeywordCollector {
                 .append("</doc>\n");
     }
     
-    /* ============================== helpers ============================== */
+    private static String trimOrNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
 
-    public static String callOpenAI(String prompt, String apiUrl, String apiKey, String modelName) {
+    private static String safe(String s) {
+        if (s == null) return "";
+        // minimal XML escape for element content / attribute values
+        StringBuilder out = new StringBuilder(s.length() + 16);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '&': out.append("&amp;"); break;
+                case '<': out.append("&lt;");  break;
+                case '>': out.append("&gt;");  break;
+                case '"': out.append("&quot;");break;
+                case '\'':out.append("&apos;");break;
+                default:  out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    private static StringBuilder indent(StringBuilder sb, int level) {
+        for (int i = 0; i < level; i++) sb.append("  ");
+        return sb;
+    }
+    
+    private static String readPromptFile()  {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        try (InputStream in = cl.getResourceAsStream("prompt.txt")) {
+            if (in == null) {
+                return null;
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    private static String callOpenAI(String prompt, String apiUrl, String apiKey, String modelName) {
         String escapedPrompt = prompt
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
@@ -250,47 +281,5 @@ public final class ModelKeywordCollector {
         }
                 
         return text.toString();
-    }
-
-    private static String trimOrNull(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
-    }
-
-    private static String safe(String s) {
-        if (s == null) return "";
-        // minimal XML escape for element content / attribute values
-        StringBuilder out = new StringBuilder(s.length() + 16);
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            switch (c) {
-                case '&': out.append("&amp;"); break;
-                case '<': out.append("&lt;");  break;
-                case '>': out.append("&gt;");  break;
-                case '"': out.append("&quot;");break;
-                case '\'':out.append("&apos;");break;
-                default:  out.append(c);
-            }
-        }
-        return out.toString();
-    }
-
-    private static StringBuilder indent(StringBuilder sb, int level) {
-        for (int i = 0; i < level; i++) sb.append("  ");
-        return sb;
-    }
-    
-    private static String readPromptFile()  {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        try (InputStream in = cl.getResourceAsStream("prompt.txt")) {
-            if (in == null) {
-                return null;
-            }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }
