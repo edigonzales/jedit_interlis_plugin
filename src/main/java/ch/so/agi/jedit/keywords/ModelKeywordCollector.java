@@ -6,12 +6,14 @@ import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
 import ch.interlis.ili2c.metamodel.Topic;
 import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.ModelDiscoveryWindow;
 import ch.so.agi.jedit.compile.TdCache;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
+import org.json.JSONObject;
 
 import javax.swing.SwingUtilities;
 
@@ -77,6 +79,15 @@ public final class ModelKeywordCollector {
             GUIUtilities.error(view, "interlis-collect-no-prompt", null);
             return;
         }
+        
+//        prompt = prompt
+//                .replace("\\", "\\\\")  // escape backslashes
+//                .replace("\"", "\\\"")  // escape quotes
+//                .replace("\r", "\\r")   // escape CR
+//                .replace("\n", "\\n");  // escape LF
+        
+        System.err.println(prompt);
+        
         prompt += xml;
         
         String apiUrl = jEdit.getProperty(P_OPENAI_BASE_URL);
@@ -97,22 +108,23 @@ public final class ModelKeywordCollector {
             return;
         }
 
-        String response = null;
-        try {
-            response = callOpenAI(apiUrl, apiKey, modelName);
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            GUIUtilities.error(view, "interlis-collect-openai-error", null);
-            return;
-        }
+//        String response = null;
+//        try {
+//            response = callOpenAI(prompt, apiUrl, apiKey, modelName);
+//        } catch (IOException | InterruptedException e) {
+//            e.printStackTrace();
+//            GUIUtilities.error(view, "interlis-collect-openai-error", null);
+//            return;
+//        }
 
-        System.err.println(response);
+        final String promptCopy = prompt;
+        ModelDiscoveryWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));
         
-        SwingUtilities.invokeLater(() -> {
-            Buffer out = jEdit.newFile(view);
-            out.setMode(jEdit.getMode("xml"));
-            out.insert(0, xml);
-        });
+//        SwingUtilities.invokeLater(() -> {
+//            Buffer out = jEdit.newFile(view);
+//            out.setMode(jEdit.getMode("xml"));
+//            out.insert(0, xml);
+//        });
     }
 
     /* ============================== XML builder ============================== */
@@ -219,23 +231,19 @@ public final class ModelKeywordCollector {
     
     /* ============================== helpers ============================== */
 
-    public static String callOpenAI(String apiUrl, String apiKey, String modelName) throws IOException, InterruptedException {
+    public static String callOpenAI(String prompt, String apiUrl, String apiKey, String modelName) {
+        String escapedPrompt = prompt
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r") 
+                .replace("\n", "\\n");
+        
         HttpClient client = HttpClient.newHttpClient();
         
         String requestBody = "{\n" +
-                "    \"model\": \"gpt-3.5-turbo\",\n" +
-                "    \"input\": [\n" +
-                
-                
-                
-                
-                
-                
-                "        {\n" +
-                "            \"role\": \"user\",\n" +
-                "            \"content\": \"Return the following XML exactly as provided: <model name=\\\"Hazard_Mapping_LV95_V1_3\\\">de:Naturgefahren,fr:Dangers naturels,it:Pericoli naturali,en:Natural hazards,de:Gefahrenkarte,fr:Carte des dangers,it:Mappa dei pericoli,en:Hazard map,de:Gefahrengebiet,fr:Zone de danger,it:Zona di pericolo,en:Hazard area,de:Gefahrenbeurteilung,fr:Évaluation des dangers,it:Valutazione dei pericoli,en:Hazard assessment,de:Perimeter,fr:Périmètre,it:Perimetro,en:Assessment area,de:Überflutung,fr:Inondation,it:Inondazione,en:Flooding,de:Hochwasser,fr:Crue,it:Piena,en:High water,de:Fliessgeschwindigkeit,fr:Vitesse d’écoulement,it:Velocità di flusso,en:Flow velocity,de:Wassertiefe,fr:Profondeur d’eau,it:Profondità dell’acqua,en:Water depth,de:Murgang,fr:Lave torrentielle,it:Colata detritica,en:Debris flow,de:Prozessintensität,fr:Intensité du processus,it:Intensità del processo,en:Process intensity,de:Gefahrenstufe,fr:Niveau de danger,it:Livello di pericolo,en:Hazard level,de:Indikatives Gefahrengebiet,fr:Zone indicative de danger,it:Zona di pericolo indicativa,en:Indicative hazard area,de:Synoptische Intensität,fr:Intensité synoptique,it:Intensità sinottica,en:Synoptic intensity,de:Besonderes Gefahrengebiet,fr:Zone spéciale de danger,it:Zona speciale di pericolo,en:Special hazard area</model>\"\n" +
-                "        }\n" +
-                "    ]\n" +
+                "    \"model\": \""+modelName+"\",\n" +
+                "    \"input\": \""+escapedPrompt+"\"" +
+                //"    \"service_tier\": \"flex\"" + 
                 "}";
         
         System.err.println("**** requestBody: " + requestBody);
@@ -248,10 +256,29 @@ public final class ModelKeywordCollector {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
         
-        HttpResponse<String> response = client.send(request, 
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = null;
+        try {
+            response = client.send(request, 
+                    HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            return null;
+        }
         
-        return response.body();
+        if (response.statusCode() >= 400) {
+            return response.body();
+        }
+        
+        JSONObject root = new JSONObject(response.body());
+        Object text = root.query("/output/1/content/0/text");
+        
+        if (text == null) {
+            return response.body();
+        }
+        
+        System.err.println("*************** " + text);
+        
+        return text.toString();
     }
 
     private static String trimOrNull(String s) {

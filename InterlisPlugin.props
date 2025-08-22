@@ -10,7 +10,7 @@ plugin.ch.so.agi.jedit.InterlisPlugin.depend.2=plugin console.ConsolePlugin 5.1.
 plugin.ch.so.agi.jedit.InterlisPlugin.depend.3=plugin errorlist.ErrorListPlugin 2.4.0
 plugin.ch.so.agi.jedit.InterlisPlugin.depend.4=plugin sidekick.SideKickPlugin 1.8
 plugin.ch.so.agi.jedit.InterlisPlugin.depend.5=plugin gatchan.jedit.hyperlinks.HyperlinksPlugin 1.2.0
-plugin.ch.so.agi.jedit.InterlisPlugin.jars=activation-1.1.1.jar antlr-2.7.7.jar base64-2.3.9.jar ehibasics-1.4.1.jar ili2c-core-5.6.6.jar ili2c-tool-5.6.6.jar iox-api-1.0.3.jar iox-ili-1.24.1.jar javax.activation-api-1.2.0.jar jaxb-api-2.3.1.jar jaxb-core-2.3.0.1.jar jaxb-impl-2.3.2.jar jhotdraw-7.6.20190506.jar jts-core-1.14.0.jar
+plugin.ch.so.agi.jedit.InterlisPlugin.jars=activation-1.1.1.jar antlr-2.7.7.jar base64-2.3.9.jar ehibasics-1.4.1.jar ili2c-core-5.6.6.jar ili2c-tool-5.6.6.jar iox-api-1.0.3.jar iox-ili-1.24.1.jar javax.activation-api-1.2.0.jar jaxb-api-2.3.1.jar jaxb-core-2.3.0.1.jar jaxb-impl-2.3.2.jar jhotdraw-7.6.20190506.jar json-20250517.jar jts-core-1.14.0.jar
 
 # Menu
 plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
@@ -26,7 +26,7 @@ toggleCompileOnSave.label=Toggle compile on save
 prettyPrintCurrentFile.label=Pretty print current file
 interlis-uml-show.label=Show UML diagram
 interlis-uml-toggle.label=Toggle UML diagram
-interlis-collect-keywords.label=Collect model keywords
+interlis-collect-keywords.label=Collect model tags
 
 # Messages
 not-an-ili-file.message=Current buffer is not an INTERLIS model file (.ili)
