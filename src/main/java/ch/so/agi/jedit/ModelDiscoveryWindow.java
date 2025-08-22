@@ -1,6 +1,7 @@
 package ch.so.agi.jedit;
 
 import org.gjt.sp.jedit.View;
+import org.gjt.sp.util.Log;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -17,10 +18,13 @@ public class ModelDiscoveryWindow {
     
     public static void showWhenReady(View owner, String prompt, Supplier<String> responseSupplier) {
         new SwingWorker<String, Void>() {
-            @Override protected String doInBackground() {
-                return responseSupplier.get(); // e.g. () -> callOpenAI(prompt, xml)
+            @Override 
+            protected String doInBackground() {
+                Log.log(Log.DEBUG, this, "Calling API...");
+                return responseSupplier.get();
             }
-            @Override protected void done() {
+            @Override 
+            protected void done() {
                 String resp;
                 try {
                     resp = get();
@@ -32,7 +36,6 @@ public class ModelDiscoveryWindow {
         }.execute();
     }
 
-    
     private static void buildAndShow(View owner, String prompt, String response) {
         JDialog dlg = new JDialog(owner, "Model tags", false);
         dlg.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);

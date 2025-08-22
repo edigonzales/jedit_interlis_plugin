@@ -165,7 +165,7 @@ public final class AutoCloser implements EBComponent, BufferListener {
                 + indent + "  VERSION \"" + today + "\"\n"
                 + indent + "  =\n"
                 + indent + "\n"
-                + indent + "END " + res.name + ";";
+                + indent + "END " + res.name + ".";
         
         final int bannerLen   = banner.length();
         final int removeStart = nameAbsEnd + bannerLen;

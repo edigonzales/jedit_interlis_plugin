@@ -2,6 +2,6 @@
 <!DOCTYPE DOCKABLES SYSTEM "dockables.dtd">
 <DOCKABLES>
   <DOCKABLE NAME="interlis-uml" MOVABLE="true">
-    new ch.so.agi.jedit.ui.UmlDockable(view, position);
+    new ch.so.agi.jedit.uml.UmlDockable(view, position);
   </DOCKABLE>
 </DOCKABLES>

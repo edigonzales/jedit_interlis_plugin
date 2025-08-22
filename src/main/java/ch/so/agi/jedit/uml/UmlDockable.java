@@ -1,9 +1,7 @@
-package ch.so.agi.jedit.ui;
+package ch.so.agi.jedit.uml;
 
-import org.gjt.sp.jedit.*;
+import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.View;
-import org.gjt.sp.jedit.msg.BufferUpdate;
-import org.gjt.sp.util.Log;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,12 +14,12 @@ import ch.interlis.ili2c.metamodel.*;
 import ch.so.agi.jedit.compile.TdCache;
 
 // JHotDraw 7.6
-import org.jhotdraw.draw.*;
-import org.jhotdraw.draw.tool.CreationTool;
+import org.jhotdraw.draw.DefaultDrawing;
+import org.jhotdraw.draw.DefaultDrawingEditor;
+import org.jhotdraw.draw.DefaultDrawingView;
+import org.jhotdraw.draw.Drawing;
+import org.jhotdraw.draw.DrawingEditor;
 import org.jhotdraw.draw.tool.SelectionTool;
-// If your JHotDraw jar uses org.jhotdraw.draw.figures.*, change imports below accordingly.
-import org.jhotdraw.draw.RectangleFigure;
-import org.jhotdraw.draw.TextFigure;
 
 public final class UmlDockable extends JPanel {
 
@@ -47,6 +45,7 @@ public final class UmlDockable extends JPanel {
         tb.add(Box.createHorizontalGlue());
         add(tb, BorderLayout.NORTH);
 
+        tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         add(tabs, BorderLayout.CENTER);
 
         refreshBtn.addActionListener(e -> rebuildFromCache());
@@ -58,7 +57,7 @@ public final class UmlDockable extends JPanel {
     /** Rebuild tabs from the latest cached TD (non-blocking; shows hint if none). */
     private void rebuildFromCache() {
         Buffer buf = view.getBuffer();
-        TransferDescription td = TdCache.peekLastValid(buf); // last valid run, even if buffer is dirty
+        TransferDescription td = TdCache.peekLastValid(buf);
         if (td == null) {
             tabs.removeAll();
             tabs.addTab("No data", msgPanel(
@@ -68,7 +67,13 @@ public final class UmlDockable extends JPanel {
         }
 
         tabs.removeAll();
-        for (Model model : td.getModelsFromLastFile()) {
+        Model[] models = td.getModelsFromLastFile();
+        if (models == null || models.length == 0) {
+            tabs.addTab("No data", msgPanel("No models in last file."));
+            return;
+        }
+
+        for (Model model : models) {
             // Model-level classes (outside any TOPIC)
             List<Table> modelClasses = collectModelLevelClasses(model);
             tabs.addTab(model.getName(), modelClasses.isEmpty()
@@ -78,7 +83,8 @@ public final class UmlDockable extends JPanel {
             // One tab per TOPIC
             for (Topic topic : collectTopics(model)) {
                 List<Table> topicClasses = collectTopicClasses(topic);
-                tabs.addTab(topic.getName(), topicClasses.isEmpty()
+                String tabTitle = /*model.getName() + "::" +*/ topic.getName();
+                tabs.addTab(tabTitle, topicClasses.isEmpty()
                         ? msgPanel("No classes in this topic.")
                         : canvasFor(topicClasses));
             }
@@ -130,19 +136,19 @@ public final class UmlDockable extends JPanel {
 
     /** Creates a scrollable JHotDraw canvas and lays out class boxes in a grid. */
     private static JComponent canvasFor(List<Table> classes) {
-        DefaultDrawingView view = new DefaultDrawingView();
-        view.setBackground(Color.white);
+        DefaultDrawingView drawingView = new DefaultDrawingView();
+        drawingView.setBackground(Color.white);
 
         DrawingEditor editor = new DefaultDrawingEditor();
-        editor.add(view);
-        editor.setActiveView(view);
+        editor.add(drawingView);
+        editor.setActiveView(drawingView);
         editor.setTool(new SelectionTool());
 
         Drawing drawing = new DefaultDrawing();
-        view.setDrawing(drawing);
+        drawingView.setDrawing(drawing);
 
         // simple grid layout
-        int cols = Math.max(1, (int)Math.ceil(Math.sqrt(classes.size())));
+        int cols = Math.max(1, (int) Math.ceil(Math.sqrt(classes.size())));
         int cellW = 280;
         int cellH = 180;
         int gap   = 30;
@@ -154,49 +160,33 @@ public final class UmlDockable extends JPanel {
             int x = gap + col * (cellW + gap);
             int y = gap + row * (cellH + gap);
 
-            addClassFigure(drawing, c, x, y, cellW, cellH);
+            addClassFigure(drawing, c, x, y);
             i++;
         }
 
-        return new JScrollPane(view);
+        return new JScrollPane(drawingView);
     }
 
-    /** Draws a class “box”: name on top, then attributes as lines of text. */
-    private static void addClassFigure(Drawing drawing, Table clazz, int x, int y, int w, int h) {
-        // outer rectangle
-        RectangleFigure box = new RectangleFigure(x, y, w, h);
-        drawing.add(box);
+    /** Adds a ClassFigure to the drawing at (x,y). */
+    private static void addClassFigure(Drawing drawing, Table clazz, int x, int y) {
+        ClassFigure cf = new ClassFigure(clazz);
+        drawing.add(cf);
 
-        // title
-        String title = clazz.getName() + (clazz.isAbstract() ? " (ABSTRACT)" : "");
-        TextFigure titleFig = new TextFigure(title);
-        placeText(titleFig, x + 10, y + 20);
-        drawing.add(titleFig);
+        // Let JHotDraw compute the natural size of the composite
+        cf.layout(); // public; runs the VerticalLayouter
 
-        // attributes (names only for now)
-        int ty = y + 40;
-        for (Iterator<?> it = clazz.getAttributesAndRoles2(); it.hasNext();) {
-            ViewableTransferElement vte = (ViewableTransferElement) it.next();
-            if (vte.obj instanceof AttributeDef) {
-                AttributeDef a = (AttributeDef) vte.obj;
-                TextFigure attr = new TextFigure(a.getName());
-                placeText(attr, x + 14, ty);
-                drawing.add(attr);
-                ty += 16;
-                if (ty > y + h - 18) break; // keep inside box
-            }
-        }
+        // Measure the size it wants
+        java.awt.geom.Rectangle2D b = cf.getBounds();
+        double w = Math.ceil(b.getWidth());
+        double h = Math.ceil(b.getHeight());
+
+        // Place it at (x,y) using that natural size
+        cf.setBounds(
+            new java.awt.geom.Point2D.Double(x, y),
+            new java.awt.geom.Point2D.Double(x + w, y + h)
+        );
     }
-
-    private static void placeText(TextFigure tf, double left, double baseline) {
-        // setBounds(anchor, lead) in 7.6 uses top-left and bottom-right points
-        Point2D.Double anchor = new Point2D.Double(left, baseline - 12);
-        java.awt.geom.Rectangle2D b = tf.getBounds();
-        Point2D.Double lead = new Point2D.Double(anchor.x + Math.max(60, b.getWidth()),
-                                                 anchor.y + Math.max(14, b.getHeight()));
-        tf.setBounds(anchor, lead);
-    }
-
+    
     private static JComponent msgPanel(String msg) {
         JTextArea ta = new JTextArea(msg);
         ta.setEditable(false);
