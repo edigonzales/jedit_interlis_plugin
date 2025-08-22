@@ -63,10 +63,9 @@ public final class ModelKeywordCollector {
 
     /** Entry point used by the jEdit action. */
     public static void collectToNewBuffer(View view) {
-        Buffer src = view.getBuffer();
+        Buffer buf = view.getBuffer();
 
-        // We use the last valid (saved/compiled) TD; if none, ask the user to compile.
-        TransferDescription td = TdCache.peekLastValid(src);
+        TransferDescription td = TdCache.peekLastValid(buf);
         if (td == null) {
             GUIUtilities.error(view, "interlis-collect-no-td", null);
             return;
@@ -79,15 +78,7 @@ public final class ModelKeywordCollector {
             GUIUtilities.error(view, "interlis-collect-no-prompt", null);
             return;
         }
-        
-//        prompt = prompt
-//                .replace("\\", "\\\\")  // escape backslashes
-//                .replace("\"", "\\\"")  // escape quotes
-//                .replace("\r", "\\r")   // escape CR
-//                .replace("\n", "\\n");  // escape LF
-        
-        System.err.println(prompt);
-        
+                
         prompt += xml;
         
         String apiUrl = jEdit.getProperty(P_OPENAI_BASE_URL);
@@ -108,23 +99,8 @@ public final class ModelKeywordCollector {
             return;
         }
 
-//        String response = null;
-//        try {
-//            response = callOpenAI(prompt, apiUrl, apiKey, modelName);
-//        } catch (IOException | InterruptedException e) {
-//            e.printStackTrace();
-//            GUIUtilities.error(view, "interlis-collect-openai-error", null);
-//            return;
-//        }
-
         final String promptCopy = prompt;
-        ModelDiscoveryWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));
-        
-//        SwingUtilities.invokeLater(() -> {
-//            Buffer out = jEdit.newFile(view);
-//            out.setMode(jEdit.getMode("xml"));
-//            out.insert(0, xml);
-//        });
+        ModelDiscoveryWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));        
     }
 
     /* ============================== XML builder ============================== */
@@ -245,10 +221,7 @@ public final class ModelKeywordCollector {
                 "    \"input\": \""+escapedPrompt+"\"" +
                 //"    \"service_tier\": \"flex\"" + 
                 "}";
-        
-        System.err.println("**** requestBody: " + requestBody);
-        System.err.println("**** apiUrl: " + apiUrl);
-        
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
                 .header("Content-Type", "application/json")
@@ -275,9 +248,7 @@ public final class ModelKeywordCollector {
         if (text == null) {
             return response.body();
         }
-        
-        System.err.println("*************** " + text);
-        
+                
         return text.toString();
     }
 
