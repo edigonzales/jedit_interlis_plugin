@@ -6,6 +6,7 @@ import org.gjt.sp.jedit.View;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D.Double;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -172,19 +173,11 @@ public final class UmlDockable extends JPanel {
         ClassFigure cf = new ClassFigure(clazz);
         drawing.add(cf);
 
-        // Let JHotDraw compute the natural size of the composite
-        cf.layout(); // public; runs the VerticalLayouter
-
-        // Measure the size it wants
-        java.awt.geom.Rectangle2D b = cf.getBounds();
-        double w = Math.ceil(b.getWidth());
-        double h = Math.ceil(b.getHeight());
-
-        // Place it at (x,y) using that natural size
-        cf.setBounds(
-            new java.awt.geom.Point2D.Double(x, y),
-            new java.awt.geom.Point2D.Double(x + w, y + h)
-        );
+        // Compute natural size, then position at (x,y)
+        cf.layout(); // passiert automatisch
+        Double b = cf.getBounds();
+        cf.setBounds(new Point2D.Double(x, y),
+                     new Point2D.Double(x + b.getWidth(), y + b.getHeight()));
     }
     
     private static JComponent msgPanel(String msg) {
