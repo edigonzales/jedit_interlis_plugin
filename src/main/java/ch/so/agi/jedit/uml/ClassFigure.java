@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import ch.interlis.ili2c.metamodel.*;
@@ -231,7 +232,7 @@ public class ClassFigure extends GraphicalCompositeFigure {
 
     private static List<String> collectRows(Table clazz) {
         ArrayList<String> rows = new ArrayList<>();
-        for (java.util.Iterator<?> it = clazz.getAttributesAndRoles2(); it.hasNext();) {
+        for (Iterator<?> it = clazz.getAttributesAndRoles2(); it.hasNext();) {
             ViewableTransferElement vte = (ViewableTransferElement) it.next();
             Object o = vte.obj;
             if (o instanceof AttributeDef) rows.add(formatAttribute((AttributeDef) o));
@@ -243,12 +244,37 @@ public class ClassFigure extends GraphicalCompositeFigure {
 
     private static String formatAttribute(AttributeDef a) {
         String typeName = "?";
-        Type t = a.getDomain();
+//        Type t = a.getDomain();
+        System.err.println(a.getName());
+        System.err.println(a.getDomainResolvingAliases());
+        System.err.println(a.getDomainResolvingAliases().getClass());
+        Type t = a.getDomainResolvingAliases();
         if (t != null) {
-            if (t.getName() != null) typeName = t.getName();
-            else if (t.getContainer() != null) typeName = t.toString();
+
+            if (t instanceof ch.interlis.ili2c.metamodel.TextType) {
+                typeName = "String";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.NumericType) {
+                typeName = "Numeric";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.SurfaceType) {
+                typeName = "Surface";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.AreaType) {
+                typeName = "Area";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.CoordType) {
+                CoordType ct = (CoordType) t;
+                NumericalType[] nts = ((CoordType) t).getDimensions();
+                typeName = "Coord" + nts.length;
+            } else if (t instanceof ch.interlis.ili2c.metamodel.EnumerationType) {
+                typeName = "?";
+                if (a.isDomainBoolean()) {
+                    typeName = "Boolean";
+                } else {
+                    typeName = a.getContainer().getName();
+                } 
+            } else if (t instanceof ch.interlis.ili2c.metamodel.CompositionType) {
+                typeName = ((CompositionType) t).getComponentType().getName();
+            }            
         }
         String mult = (a.getCardinality() != null) ? a.getCardinality().toString() : "";
-        return a.getName() + " : " + typeName + (mult.isEmpty() ? "" : " [" + mult + "]");
+        return a.getName() + (mult.isEmpty() ? "" : mult.replace("{", "[").replace("}", "]")) + " : " + typeName;
     }
 }
