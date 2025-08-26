@@ -42,10 +42,11 @@ java -jar jedit.jar -log=3
 - UML: Menu, Zoom, Pan
 - UML: Sync
 - UML: stereotype
-- UML: topics
+- UML: Strukturen
+- ~~UML: topics~~
 - UML: Vererbungen
 - UML: Assoziationen
-- UML: Abstrakt kursiv
+- ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
 - UML: PNG/SVG-Export
 - UML: Einfärben
 - UML: show inherited attributes in different format (also Option).

@@ -6,7 +6,7 @@ import org.gjt.sp.jedit.View;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D.Double;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -75,14 +75,18 @@ public final class UmlDockable extends JPanel {
         }
 
         for (Model model : models) {
-            // Model-level classes (outside any TOPIC)
+            List<Topic> topics = collectTopics(model);
             List<Table> modelClasses = collectModelLevelClasses(model);
-            tabs.addTab(model.getName(), modelClasses.isEmpty()
-                    ? msgPanel("No model-level classes.")
-                    : canvasFor(modelClasses));
 
-            // One tab per TOPIC
-            for (Topic topic : collectTopics(model)) {
+            // Single tab: topics + model-level classes together
+            if (topics.isEmpty() && modelClasses.isEmpty()) {
+                tabs.addTab(model.getName(), msgPanel("No topics or model-level classes."));
+            } else {
+                tabs.addTab(model.getName(), canvasForOverview(topics, modelClasses));
+            }
+
+            // One tab per TOPIC for its classes (kept as before)
+            for (Topic topic : topics) {
                 List<Table> topicClasses = collectTopicClasses(topic);
                 String tabTitle = /*model.getName() + "::" +*/ topic.getName();
                 tabs.addTab(tabTitle, topicClasses.isEmpty()
@@ -133,7 +137,53 @@ public final class UmlDockable extends JPanel {
         return out;
     }
 
-    /* ============================== canvas =================================== */
+    /* ============================== canvases ================================= */
+
+    /** Overview canvas: topics + model-level classes in one grid. */
+    private static JComponent canvasForOverview(List<Topic> topics, List<Table> classes) {
+        DefaultDrawingView drawingView = new DefaultDrawingView();
+        drawingView.setBackground(Color.white);
+
+        DrawingEditor editor = new DefaultDrawingEditor();
+        editor.add(drawingView);
+        editor.setActiveView(drawingView);
+        editor.setTool(new SelectionTool());
+
+        Drawing drawing = new DefaultDrawing();
+        drawingView.setDrawing(drawing);
+
+        int total = topics.size() + classes.size();
+        if (total == 0) return new JScrollPane(drawingView);
+
+        int cols = Math.max(1, (int) Math.ceil(Math.sqrt(total)));
+        int cellW = 320; // a bit larger to accommodate TopicFigure body
+        int cellH = 200;
+        int gap   = 30;
+
+        int i = 0;
+
+        // Place topics first
+        for (Topic t : topics) {
+            int row = i / cols;
+            int col = i % cols;
+            int x = gap + col * (cellW + gap);
+            int y = gap + row * (cellH + gap);
+            addTopicFigure(drawing, t, x, y);
+            i++;
+        }
+
+        // Then model-level classes
+        for (Table c : classes) {
+            int row = i / cols;
+            int col = i % cols;
+            int x = gap + col * (cellW + gap);
+            int y = gap + row * (cellH + gap);
+            addClassFigure(drawing, c, x, y);
+            i++;
+        }
+
+        return new JScrollPane(drawingView);
+    }
 
     /** Creates a scrollable JHotDraw canvas and lays out class boxes in a grid. */
     private static JComponent canvasFor(List<Table> classes) {
@@ -148,7 +198,6 @@ public final class UmlDockable extends JPanel {
         Drawing drawing = new DefaultDrawing();
         drawingView.setDrawing(drawing);
 
-        // simple grid layout
         int cols = Math.max(1, (int) Math.ceil(Math.sqrt(classes.size())));
         int cellW = 280;
         int cellH = 180;
@@ -168,18 +217,26 @@ public final class UmlDockable extends JPanel {
         return new JScrollPane(drawingView);
     }
 
+    /** Adds a TopicFigure (UML package) to the drawing at (x,y). */
+    private static void addTopicFigure(Drawing drawing, Topic topic, int x, int y) {
+        TopicFigure tf = new TopicFigure(topic);
+        drawing.add(tf);
+
+        // Initial anchor; TopicFigure computes its own size in layout()
+        tf.setBounds(new Point2D.Double(x, y), new Point2D.Double(x + 200, y + 140));
+        tf.layout(); // ensure natural size is applied
+    }
+
     /** Adds a ClassFigure to the drawing at (x,y). */
     private static void addClassFigure(Drawing drawing, Table clazz, int x, int y) {
         ClassFigure cf = new ClassFigure(clazz);
         drawing.add(cf);
 
-        // Compute natural size, then position at (x,y)
-        cf.layout(); // passiert automatisch
-        Double b = cf.getBounds();
-        cf.setBounds(new Point2D.Double(x, y),
-                     new Point2D.Double(x + b.getWidth(), y + b.getHeight()));
+        // Initial anchor; ClassFigure computes size in layout()
+        cf.setBounds(new Point2D.Double(x, y), new Point2D.Double(x + 200, y + 120));
+        cf.layout(); // ensure natural size is applied
     }
-    
+
     private static JComponent msgPanel(String msg) {
         JTextArea ta = new JTextArea(msg);
         ta.setEditable(false);
