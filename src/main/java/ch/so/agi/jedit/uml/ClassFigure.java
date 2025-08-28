@@ -5,7 +5,9 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import ch.interlis.ili2c.metamodel.*;
 
@@ -193,20 +195,39 @@ public class ClassFigure extends GraphicalCompositeFigure {
 
     private static List<String> collectRows(Table clazz) {
         ArrayList<String> rows = new ArrayList<>();
-        for (Iterator<?> it = clazz.getAttributesAndRoles2(); it.hasNext();) {
+        for (java.util.Iterator<?> it = clazz.getAttributesAndRoles2(); it.hasNext();) {
             ViewableTransferElement vte = (ViewableTransferElement) it.next();
             Object o = vte.obj;
             if (o instanceof AttributeDef) {
-                AttributeDef attrDef = ((AttributeDef) o);
-//                attrDef.i
-                rows.add(formatAttribute((AttributeDef) o));
+                AttributeDef a = (AttributeDef) o;
+
+                AttrKind kind = classify(clazz, a);
+                String label  = formatAttribute(a);
+
+                switch (kind) {
+                    // TODO: default nicht anzeigen, aber Option?
+                    case INHERITED: {
+                        // where was it originally declared?
+                        String baseDeclScoped = declaringClassScopedName(root(a)); // top-most origin
+                        rows.add(label + "  «from " + shortName(baseDeclScoped) + "»");
+                        break;
+                    }
+                    // TODO: immer anzeigen?
+                    case OVERRIDES: {
+                        // which base does it extend/override?
+                        AttributeDef base = (AttributeDef) a.getExtending();
+                        String baseDeclScoped = declaringClassScopedName(root(base));
+                        rows.add(label + "  «overrides " + shortName(baseDeclScoped) + "." + base.getName() + "»");
+                        break;
+                    }
+                    default: // DECLARED_HERE
+                        rows.add(label);
+                }
             }
-            // Add RoleDef later if you want association ends in this compartment
-            // else if (o instanceof RoleDef) rows.add(formatRole((RoleDef) o));
         }
         return rows;
     }
-
+    
     private static String formatAttribute(AttributeDef a) {
         String typeName = "?";
         Type t = a.getDomainResolvingAliases();
@@ -234,4 +255,82 @@ public class ClassFigure extends GraphicalCompositeFigure {
                 + (mult.isEmpty() ? "" : mult.replace("{", "[").replace("}", "]"))
                 + " : " + typeName;
     }
-}
+    
+    /* ===== Inheritance helpers for attributes ===== */
+
+    /* ----------------------- helpers ----------------------- */
+    enum AttrKind { DECLARED_HERE, INHERITED, OVERRIDES }
+
+    /** Scoped name (e.g., Model.Topic.Class) of the class that declared this attribute, or null. */
+    private static String declaringClassScopedName(AttributeDef a) {
+        Container<?> c = a.getContainer(Viewable.class); // nearest container of type Viewable
+        return (c != null) ? c.getScopedName(null) : null;
+    }
+
+    /** Simple class name from a scoped name. */
+    private static String shortName(String scoped) {
+        if (scoped == null) return "?";
+        int i = scoped.lastIndexOf('.');
+        return (i >= 0) ? scoped.substring(i + 1) : scoped;
+    }
+
+    /** True if `otherScoped` is a superclass (direct/indirect) of `owner`. */
+    private static boolean isSuperclassOf(Viewable owner, String otherScoped) {
+        if (otherScoped == null) return false;
+        Element cur = owner;
+        while (cur instanceof Extendable) {
+            Element p = ((Extendable) cur).getExtending();
+            if (!(p instanceof Viewable)) break;
+            String scoped = ((Viewable) p).getScopedName(null);
+            if (otherScoped.equals(scoped)) return true;
+            cur = p;
+        }
+        return false;
+    }
+
+    /** Top-most ancestor attribute in an extension chain (or the attribute itself). */
+    private static AttributeDef root(AttributeDef a) {
+        AttributeDef r = a.getRootExtending();
+        return (r != null) ? r : a;
+    }
+
+    /** Classify an attribute relative to the owning class. */
+    private static AttrKind classify(Table owner, AttributeDef attr) {
+        String ownerScoped = owner.getScopedName(null);
+        String declScoped  = declaringClassScopedName(attr);
+
+        if (!ownerScoped.equals(declScoped)) {
+            // Appears on owner but declared elsewhere → inherited if that elsewhere is a superclass
+            return isSuperclassOf(owner, declScoped) ? AttrKind.INHERITED : AttrKind.DECLARED_HERE;
+        }
+        // Declared here; check if it overrides/extends a base attribute
+        Element ext = attr.getExtending();
+        if (ext instanceof AttributeDef) {
+            AttributeDef base = (AttributeDef) ext;
+            String baseDeclScoped = declaringClassScopedName(base);
+            if (isSuperclassOf(owner, baseDeclScoped)) return AttrKind.OVERRIDES;
+        }
+        return AttrKind.DECLARED_HERE;
+    }
+    
+    /* ------------------ main predicate --------------------- */
+
+    /** Returns true if `attr` comes from a superclass of `owner` (inherited or overrides). */
+    private static boolean isDerivedFromSuperclass(Viewable owner, AttributeDef attr) {
+        String declaredHereScoped = declaringClassScopedName(attr);
+        String ownerScoped        = owner.getScopedName(null);
+
+        if (!ownerScoped.equals(declaredHereScoped)) {
+            // Declared somewhere else -> inherited if that "somewhere" is a superclass
+            return isSuperclassOf(owner, declaredHereScoped);
+        }
+
+        // Declared in this class; it may still be an override/extension of a base attribute
+        Element ext = attr.getExtending();
+        if (ext instanceof AttributeDef) {
+            AttributeDef base = root((AttributeDef) ext);
+            String baseDeclScoped = declaringClassScopedName(base);
+            return isSuperclassOf(owner, baseDeclScoped);
+        }
+        return false;
+    }}
