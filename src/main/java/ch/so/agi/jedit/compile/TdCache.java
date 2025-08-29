@@ -125,7 +125,12 @@ public final class TdCache {
     }
     
     public static TransferDescription peekLastValid(Buffer buf) {
+        
+        System.err.println("************* buffer: "+  buf);
+        
         TransferDescription td = MAP_LAST_VALID.get(buf);
+        System.err.println("************* last valid td: "+  td);
+
         
         if (td != null) {
             return td;
