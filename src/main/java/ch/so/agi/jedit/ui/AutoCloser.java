@@ -207,8 +207,8 @@ public final class AutoCloser implements EBComponent, BufferListener {
 
     /* ================================ LEXER =============================== */
 
-    private enum T { CLASS, STRUCTURE, TOPIC, VIEW, MODEL, EXTENDS, LPAREN, RPAREN, COMMA, IDENT }
-
+    private enum T { CLASS, STRUCTURE, TOPIC, VIEW, MODEL, EXTENDS, LPAREN, RPAREN, COMMA, DOT, IDENT }
+    
     private static final class Token {
         final T t;
         final String text; // only for IDENT
@@ -241,7 +241,8 @@ public final class AutoCloser implements EBComponent, BufferListener {
                 if (c == '(') { out.add(new Token(T.LPAREN, i)); i++; continue; }
                 if (c == ')') { out.add(new Token(T.RPAREN, i)); i++; continue; }
                 if (c == ',') { out.add(new Token(T.COMMA,  i)); i++; continue; }
-
+                if (c == '.') { out.add(new Token(T.DOT,  i)); i++; continue; }
+                
                 // identifier or keyword (case-sensitive)
                 if (Character.isLetter(c) || c == '_') {
                     int j = i + 1;
@@ -357,10 +358,11 @@ public final class AutoCloser implements EBComponent, BufferListener {
                 // optional EXTENDS IDENT
                 if (p < n && toks.get(p).t == T.EXTENDS) {
                     p++;
-                    if (p >= n || toks.get(p).t != T.IDENT) continue;
-                    p++;
+                    int q = parseQualifiedIdent(toks, p);
+                    if (q == -1) continue; // bad qualified name
+                    p = q;
                 }
-
+                
                 if (p == n) {
                     return new ParseResult(kind, name, kw.pos, namePos, nameLen);
                 }
@@ -402,6 +404,18 @@ public final class AutoCloser implements EBComponent, BufferListener {
                 if (p == n) return new ParseResult(Kind.MODEL, name, kw.pos, namePos, nameLen);
             }
             return null;
+        }
+        
+        /** Parses IDENT (DOT IDENT)* starting at index p. Returns new index,
+         *  or -1 on syntax error. */
+        private static int parseQualifiedIdent(List<Token> toks, int p) {
+            final int n = toks.size();
+            if (p >= n || toks.get(p).t != T.IDENT) return -1;
+            p++; // consumed first IDENT
+            while (p + 1 < n && toks.get(p).t == T.DOT && toks.get(p + 1).t == T.IDENT) {
+                p += 2; // consume ". IDENT"
+            }
+            return p;
         }
 
         private static boolean isAllowedFlag(Token tk, Set<String> allowed) {

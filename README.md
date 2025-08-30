@@ -42,11 +42,12 @@ java -jar jedit.jar -log=3
 - UML: ~~Kardinalität~~
 - UML: Menu, ~~Zoom, Pan~~
 - UML: Option "show all attributes"
+- UML: Refresh mit Platzierung beibehalten
 - ~~UML: Sync~~
 - ~~UML: stereotype~~
 - ~~UML: Strukturen~~
 - ~~UML: topics~~
-- UML: Vererbungen
+- ~~UML: Vererbungen~~
 - UML: Assoziationen
 - ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
 - UML: PNG/SVG-Export
