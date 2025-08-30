@@ -10,6 +10,9 @@ import java.awt.event.MouseWheelListener;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -142,7 +145,7 @@ public final class UmlDockable extends JPanel {
                 String tabTitle = /*model.getName() + "::" +*/ topic.getName();
                 tabs.addTab(tabTitle, topicClasses.isEmpty()
                         ? msgPanel("No classes in this topic.")
-                        : canvasFor(topicClasses));
+                        : canvasFor(topicClasses, model));
             }
         }
         tabs.revalidate();
@@ -214,15 +217,20 @@ public final class UmlDockable extends JPanel {
 
         int i = 0;
 
+        Map<Topic, TopicFigure> byTopic = new HashMap<>();
+        
         // Place topics first
         for (Topic t : topics) {
             int row = i / cols;
             int col = i % cols;
             int x = gap + col * (cellW + gap);
             int y = gap + row * (cellH + gap);
-            addTopicFigure(drawing, t, x, y);
+            TopicFigure tf = addTopicFigure(drawing, t, x, y);
+            byTopic.put(t, tf);
             i++;
         }
+        
+        addTopicDependencyEdges(drawing, topics, byTopic);
 
         // Then model-level classes
         for (Table c : classes) {
@@ -265,8 +273,47 @@ public final class UmlDockable extends JPanel {
         return sp;
     }
 
+    private static void addTopicDependencyEdges(
+            Drawing drawing,
+            List<Topic> topics,
+            Map<Topic, TopicFigure> byTopic) {
+
+        for (Topic t : topics) {
+            for (Topic dep : topicDependsOn(t)) { // t DEPENDS ON dep
+                TopicFigure src = byTopic.get(t);
+                TopicFigure dst = byTopic.get(dep);
+                if (src == null || dst == null) {
+                    // dependency points to a topic not shown on this canvas → ignore or add a stub label if you want
+                    continue;
+                }
+                DependsConnectionFigure cf = new DependsConnectionFigure();
+                drawing.add(cf);
+                cf.setStartConnector(src.connector()); // start = topic that HAS the dependency
+                cf.setEndConnector(dst.connector());   // end = depended-on topic (arrow points here)
+                // JHotDraw will keep it attached as you move topics
+            }
+        }
+    }
+    
+    private static List<Topic> topicDependsOn(Topic t) {
+        List<Topic> out = new ArrayList<>();
+        if (t == null) return out;
+
+        Iterator<Topic> it = t.getDependentOn(); // ili2c: returns an Iterator
+        if (it == null) return out;
+
+        while (it.hasNext()) {
+            Topic dep = it.next();
+            if (dep != t) {
+                out.add(dep); // skip self, just in case
+            }
+        }
+        return out;
+    }
+    
+    
     /** Creates a scrollable JHotDraw canvas and lays out class boxes in a grid. */
-    private static JComponent canvasFor(List<Table> classes) {
+    private static JComponent canvasFor(List<Table> classes, Model model) {
         DefaultDrawingView drawingView = new DefaultDrawingView();
         drawingView.setBackground(Color.white);
 
@@ -321,20 +368,151 @@ public final class UmlDockable extends JPanel {
             }
         }
         
+//        java.util.List<Object> scope = new java.util.ArrayList<>();
+//        for (java.util.Iterator<?> it = topic.iterator(); it.hasNext();) {
+//            scope.add(it.next());
+//        }
+//        wireAssociations(drawing, scope, figureByScoped);
+        
+        List<AssociationDef> allAssocs = collectAllAssociations(model);
+        wireAssociationsForCanvas(drawing, allAssocs, figureByScoped);
+        
         JScrollPane sp = new JScrollPane(drawingView);
         installWheelZoom(drawingView, sp);     // your existing zoom helper
         installPanSupport(drawingView, editor, sp); // <-- add this
         return sp;
     }
 
+    private static String card(RoleDef r) {
+        Cardinality c = r.getCardinality();
+        if (c == null) return "1";
+        return c.toString().replace('{','[').replace('}',']');
+    }
+    
+    private static String shortTargetLabel(Viewable v) {
+        String scoped = v.getScopedName(null);
+        if (scoped == null) return v.getName();
+        String[] p = scoped.split("\\.");
+        return (p.length >= 3) ? (p[p.length-2] + "::" + p[p.length-1]) : p[p.length-1];
+    }
+    
+    private static void wireAssociationsForCanvas(
+            Drawing drawing,
+            List<AssociationDef> allAssocsInModel,
+            java.util.Map<String, ClassFigure> figByScoped) {
+
+        for (AssociationDef a : allAssocsInModel) {
+            RoleDef r1 = null, r2 = null;
+            for (Iterator<?> it = a.iterator(); it.hasNext();) {
+                Object o = it.next();
+                if (o instanceof RoleDef) {
+                    if (r1 == null) r1 = (RoleDef) o;
+                    else { r2 = (RoleDef) o; break; }
+                }
+            }
+            if (r1 == null || r2 == null) continue;
+
+            Viewable v1 = r1.getDestination(); // <- not getTarget()
+            Viewable v2 = r2.getDestination();
+            if (!(v1 instanceof Table) || !(v2 instanceof Table)) continue;
+
+            String k1 = ((Table) v1).getScopedName(null);
+            String k2 = ((Table) v2).getScopedName(null);
+            ClassFigure f1 = figByScoped.get(k1);
+            ClassFigure f2 = figByScoped.get(k2);
+
+            if (f1 != null && f2 != null) {
+                // both ends on this canvas → draw connection + multiplicities
+                AssociationFigure edge = new AssociationFigure();
+                edge.setStartMultiplicity(card(r1));
+                edge.setEndMultiplicity(card(r2));
+                edge.addTo(drawing);                 // OK before/after setting text
+                edge.setStartConnector(f1.connector());
+                edge.setEndConnector(f2.connector());
+                edge.updateConnection();
+            } else if (f1 != null) {
+                // only left end visible here → show external row on left
+                f1.addExternalRoleRow(r1.getName() + " " + card(r1)
+                        + " : " + shortTargetLabel(v2) + "  «external»");
+            } else if (f2 != null) {
+                // only right end visible here → show external row on right
+                f2.addExternalRoleRow(r2.getName() + " " + card(r2)
+                        + " : " + shortTargetLabel(v1) + "  «external»");
+            }
+        }
+    }
+    
+//    private static void wireAssociations(
+//            Drawing drawing,
+//            Iterable<?> scopeElements,                 // e.g., model or topic via their iterator()
+//            java.util.Map<String, ClassFigure> figByScoped) {
+//
+//        java.util.ArrayList<AssociationDef> assocs = new java.util.ArrayList<>();
+//        for (Object o : scopeElements) if (o instanceof AssociationDef) assocs.add((AssociationDef) o);
+//
+//        for (AssociationDef a : assocs) {
+//            RoleDef r1 = null, r2 = null;
+//            for (java.util.Iterator<?> it = a.iterator(); it.hasNext();) {
+//                Object o = it.next();
+//                if (o instanceof RoleDef) {
+//                    if (r1 == null) r1 = (RoleDef) o;
+//                    else { r2 = (RoleDef) o; break; }
+//                }
+//            }
+//            if (r1 == null || r2 == null) continue;
+//
+//            Viewable t1 = r1.getDestination();
+//            Viewable t2 = r2.getDestination();
+//            if (!(t1 instanceof Table) || !(t2 instanceof Table)) continue;
+//
+//            String k1 = ((Table) t1).getScopedName(null);
+//            String k2 = ((Table) t2).getScopedName(null);
+//            ClassFigure f1 = figByScoped.get(k1);
+//            ClassFigure f2 = figByScoped.get(k2);
+//
+//            if (f1 != null && f2 != null) {
+//                AssociationFigure edge = new AssociationFigure();
+//                edge.setStartMultiplicity(card(r1));
+//                edge.setEndMultiplicity(card(r2));
+//                edge.addTo(drawing);
+//                edge.setStartConnector(f1.connector());
+//                edge.setEndConnector(f2.connector());
+//                edge.updateConnection();
+//            } else if (f1 != null && f2 == null) {
+//                f1.addExternalRoleRow(r1.getName() + " " + card(r1) + " : " + shortTargetLabel(t2) + "  «external»");
+//            } else if (f2 != null && f1 == null) {
+//                f2.addExternalRoleRow(r2.getName() + " " + card(r2) + " : " + shortTargetLabel(t1) + "  «external»");
+//            }
+//        }
+//    }
+    
+    private static List<AssociationDef> collectAllAssociations(Model model) {
+        ArrayList<AssociationDef> out = new ArrayList<>();
+        // model-level
+        for (Iterator<?> it = model.iterator(); it.hasNext();) {
+            Object o = it.next();
+            if (o instanceof AssociationDef) out.add((AssociationDef) o);
+            if (o instanceof Topic) {
+                Topic tp = (Topic) o;
+                for (Iterator<?> it2 = tp.iterator(); it2.hasNext();) {
+                    Object p = it2.next();
+                    if (p instanceof AssociationDef) out.add((AssociationDef) p);
+                }
+            }
+        }
+        return out;
+    }
+    
     /** Adds a TopicFigure (UML package) to the drawing at (x,y). */
-    private static void addTopicFigure(Drawing drawing, Topic topic, int x, int y) {
+    private static TopicFigure addTopicFigure(Drawing drawing, Topic topic, int x, int y) {
         TopicFigure tf = new TopicFigure(topic);
         drawing.add(tf);
 
         // Initial anchor; TopicFigure computes its own size in layout()
         tf.setBounds(new Point2D.Double(x, y), new Point2D.Double(x + 200, y + 140));
         tf.layout(); // ensure natural size is applied
+        
+        return tf;
     }
 
     /** Adds a ClassFigure to the drawing at (x,y). */

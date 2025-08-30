@@ -9,6 +9,8 @@ import ch.interlis.ili2c.metamodel.Topic;
 import org.jhotdraw.draw.GraphicalCompositeFigure;
 import org.jhotdraw.draw.RectangleFigure;
 import org.jhotdraw.draw.TextFigure;
+import org.jhotdraw.draw.connector.ChopRectangleConnector;
+import org.jhotdraw.draw.connector.Connector;
 
 /**
  * JHotDraw 7.6 TopicFigure (UML package-style):
@@ -78,6 +80,10 @@ public class TopicFigure extends GraphicalCompositeFigure {
     public void setTitle(String title) {
         titleTf.setText(title);
         layout();
+    }
+    
+    public Connector connector() {
+        return new ChopRectangleConnector(this);
     }
 
     @Override

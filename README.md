@@ -48,10 +48,10 @@ java -jar jedit.jar -log=3
 - ~~UML: Strukturen~~
 - ~~UML: topics~~
 - ~~UML: Vererbungen~~
-- UML: Assoziationen
+- ~~UML: Assoziationen~~
 - ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
 - UML: PNG/SVG-Export
 - UML: Einfärben
 - UML: "Optimale" Platzierung Algo
 - ~~UML: show inherited attributes in different format (also Option).~~ tendenziell nicht. backlog?
-- Clean code / Refactoring
+- Clean code / Refactoring: Trennen von UmlDockable und Drawings?

@@ -302,6 +302,26 @@ public class ClassFigure extends GraphicalCompositeFigure {
         }
         return rows;
     }
+    
+    /** Adds a new row under the separator and relayouts the figure.
+     *  Intended for cross-topic associations (rendered as «external» rows). */
+    public void addExternalRoleRow(String text) {
+        // Create the row label
+        TextFigure tf = new TextFigure(text);
+        tf.set(org.jhotdraw.draw.AttributeKeys.FONT_SIZE, 12d);
+        tf.setSelectable(false);
+        tf.setTransformable(false);
+
+        tf.set(org.jhotdraw.draw.AttributeKeys.TEXT_COLOR, new java.awt.Color(90, 90, 90));
+        tf.set(org.jhotdraw.draw.AttributeKeys.FONT_ITALIC, Boolean.TRUE);
+        
+        // Track it and add as child so layout() can position it
+        rowFigs.add(tf);
+        add(tf);
+
+        // Recompute size/positions (your layout() already places items in rowFigs)
+        layout();
+    }
 
     private static String formatAttribute(AttributeDef a) {
         String typeName = "?";
