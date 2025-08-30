@@ -98,7 +98,6 @@ public final class CompileService {
     private static void cacheTd(Buffer buffer, TransferDescription td, Path log) {
         if (td != null) {
             TdCache.put(buffer, td, log);
-            // TODO ich glaube hier muss auch last valid behandelt werden und zuruückgeschrieben werden.
         }
     }
     

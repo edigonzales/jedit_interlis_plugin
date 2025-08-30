@@ -90,6 +90,9 @@ public final class TdCache {
     public static void put(Buffer buf, TransferDescription td, Path log) {
         long rev = buf.getLastModified();
         MAP.put(buf, new Entry(rev, CompletableFuture.completedFuture(td), log));
+        if (td != null) {
+            MAP_LAST_VALID.put(buf, td);
+        }
     }
     
     // Check if buffer is dirty. Handle accordingly.
@@ -124,14 +127,8 @@ public final class TdCache {
         }
     }
     
-    public static TransferDescription peekLastValid(Buffer buf) {
-        
-        System.err.println("************* buffer: "+  buf);
-        
+    public static TransferDescription peekLastValid(Buffer buf) {        
         TransferDescription td = MAP_LAST_VALID.get(buf);
-        System.err.println("************* last valid td: "+  td);
-
-        
         if (td != null) {
             return td;
         }
