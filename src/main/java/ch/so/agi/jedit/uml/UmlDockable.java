@@ -157,7 +157,7 @@ public final class UmlDockable extends JPanel {
         return out;
     }
 
-    /** Tables (classes) declared directly in the model (not inside any topic). */
+    /** Tables (classes, structures) declared directly in the model (not inside any topic). */
     private static List<Table> collectModelLevelClasses(Model model) {
         ArrayList<Table> out = new ArrayList<>();
         for (Iterator<?> it = model.iterator(); it.hasNext();) {
@@ -165,7 +165,7 @@ public final class UmlDockable extends JPanel {
             if (o instanceof Topic) continue; // skip topics here
             if (o instanceof Table) {
                 Table t = (Table) o;
-                if (t.isIdentifiable()) out.add(t); // classes only, not structures
+                out.add(t); // classes and structures
             }
         }
         return out;
@@ -178,7 +178,7 @@ public final class UmlDockable extends JPanel {
             Object o = it.next();
             if (o instanceof Table) {
                 Table t = (Table) o;
-                if (t.isIdentifiable()) out.add(t);
+                out.add(t); // classes and structures
             }
         }
         return out;

@@ -37,9 +37,10 @@ java -jar jedit.jar -log=3
 - Hyperlink: Auch für Topics, Klassen etc. (weiss nicht wie schwierig das ist).
 - UML: ~~als dockable window.~~
 - UML: vererbte Attribute
-- UML: Attributtypen
-- UML: Multiplizität
-- UML: Menu, Zoom, Pan
+- ~~UML: Attributtypen~~
+- UML: Ein-/Ausschalten Attributtypen und Kardinalität
+- UML: ~~Kardinalität~~
+- UML: Menu, ~~Zoom, Pan~~
 - UML: Sync
 - UML: stereotype
 - UML: Strukturen
