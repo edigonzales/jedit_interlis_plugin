@@ -9,6 +9,9 @@ import java.util.List;
 
 import ch.interlis.ili2c.metamodel.*;
 
+import org.jhotdraw.draw.AttributeKey;
+import org.jhotdraw.draw.AttributeKeys;
+import org.jhotdraw.draw.Figure;
 import org.jhotdraw.draw.GraphicalCompositeFigure;
 import org.jhotdraw.draw.RectangleFigure;
 import org.jhotdraw.draw.TextFigure;
@@ -22,6 +25,9 @@ import org.jhotdraw.draw.connector.Connector;
  * - Auto-sizes to content; origin preserved during layout
  */
 public class ClassFigure extends GraphicalCompositeFigure {
+    public static final AttributeKey<ClassFigure> OWNER_KEY =
+            new AttributeKey<>("uml.class.owner", ClassFigure.class);
+    
     /* ===== styling ===== */
     private static final double STROKE            = 1.0;
 
@@ -112,6 +118,12 @@ public class ClassFigure extends GraphicalCompositeFigure {
             rowFigs.add(tf);
             add(tf);
         }
+        
+        tagOwner(this);
+        tagOwner(outerRect);
+        tagOwner(headerRect);
+        tagOwner(titleTf);
+        for (TextFigure tf : rowFigs) tagOwner(tf);
     }
 
     public void setTitle(String txt) {
@@ -268,6 +280,21 @@ public class ClassFigure extends GraphicalCompositeFigure {
         }
         layout();
     }
+    
+    private void tagOwner(Figure f) {
+        f.set(OWNER_KEY, this);
+    }
+    
+    public void setBackgroundColor(Color c) {
+        willChange(); // tell JHotDraw a visual change is about to happen
+        outerRect.set(AttributeKeys.FILL_COLOR, c);
+        changed();    // invalidate + schedule repaint of this figure’s bounds
+    }
+
+    public Color getBackgroundColor() {
+        return outerRect.get(AttributeKeys.FILL_COLOR);
+    }
+
 
     /* ===== helpers (unchanged) ===== */
 

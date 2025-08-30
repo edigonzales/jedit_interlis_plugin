@@ -5,6 +5,8 @@ import org.gjt.sp.jedit.View;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.geom.Point2D;
@@ -26,6 +28,7 @@ import org.jhotdraw.draw.DefaultDrawingEditor;
 import org.jhotdraw.draw.DefaultDrawingView;
 import org.jhotdraw.draw.Drawing;
 import org.jhotdraw.draw.DrawingEditor;
+import org.jhotdraw.draw.Figure;
 import org.jhotdraw.draw.RectangleFigure;
 import org.jhotdraw.draw.TextFigure;
 import org.jhotdraw.draw.connector.ChopRectangleConnector;
@@ -205,6 +208,8 @@ public final class UmlDockable extends JPanel {
         Drawing drawing = new DefaultDrawing();
         drawingView.setDrawing(drawing);
         
+        installClassColorUI(drawingView);
+
         java.util.Map<String, ClassFigure> figureByScoped = new java.util.HashMap<>();
         
         int total = topics.size() + classes.size();
@@ -323,6 +328,8 @@ public final class UmlDockable extends JPanel {
 
         Drawing drawing = new DefaultDrawing();
         drawingView.setDrawing(drawing);
+        
+        installClassColorUI(drawingView);
         
         java.util.Map<String, ClassFigure> figureByScoped = new java.util.HashMap<>();
 
@@ -680,6 +687,92 @@ public final class UmlDockable extends JPanel {
         }
         // model-level: show class only (no model)
         return p[p.length - 1];
+    }
+    
+
+    private static ClassFigure ownerOf(Figure f) {
+        if (f == null) return null;
+        if (f instanceof ClassFigure) return (ClassFigure) f;
+        return f.get(ClassFigure.OWNER_KEY); // tag set on children
+    }
+
+    private static void installClassColorUI(DefaultDrawingView view) {
+        final JPopupMenu popup = new JPopupMenu();
+        final JMenuItem setFill   = new JMenuItem("Set fill…");
+        final JMenuItem resetFill = new JMenuItem("Reset fill");
+        popup.add(setFill);
+        popup.add(resetFill);
+
+        final Runnable repaint = view::repaint;
+
+        setFill.addActionListener(e -> {
+            Color initial = Color.white;
+            // If there’s a selected class, use its current color as initial
+            for (Figure sf : view.getSelectedFigures()) {
+                ClassFigure cf = ownerOf(sf);
+                if (cf != null && cf.getBackgroundColor() != null) {
+                    initial = cf.getBackgroundColor();
+                    break;
+                }
+            }
+            Color chosen = JColorChooser.showDialog(view.getComponent(), "Class fill color", initial);
+            if (chosen == null) return;
+
+            boolean applied = false;
+            for (Figure sf : view.getSelectedFigures()) {
+                ClassFigure cf = ownerOf(sf);
+                if (cf != null) { cf.setBackgroundColor(chosen); applied = true; }
+            }
+            if (!applied) {
+                // apply to figure under mouse if no selection
+                Point p = MouseInfo.getPointerInfo().getLocation();
+                SwingUtilities.convertPointFromScreen(p, view.getComponent());
+                Figure f = view.findFigure(p);
+                ClassFigure cf = ownerOf(f);
+                if (cf != null) { cf.setBackgroundColor(chosen); }
+            }
+            repaint.run();
+        });
+
+        resetFill.addActionListener(e -> {
+            for (Figure sf : view.getSelectedFigures()) {
+                ClassFigure cf = ownerOf(sf);
+                if (cf != null) cf.setBackgroundColor(null);
+            }
+            repaint.run();
+        });
+
+        view.getComponent().addMouseListener(new MouseAdapter() {
+            private void maybeShowPopup(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    popup.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+            @Override public void mousePressed (MouseEvent e){ maybeShowPopup(e); }
+            @Override public void mouseReleased(MouseEvent e){ maybeShowPopup(e); }
+            @Override public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+                    Figure f = view.findFigure(e.getPoint());
+                    ClassFigure cf = ownerOf(f);
+                    if (cf != null) {
+                        Color initial = (cf.getBackgroundColor() != null) ? cf.getBackgroundColor() : Color.white;
+                        Color chosen = JColorChooser.showDialog(view.getComponent(), "Class fill color", initial);
+                        if (chosen != null) {
+                            
+                            System.err.println("********: color "  + chosen);
+                            // apply to selection if present, else to this one
+                            boolean applied = false;
+                            for (Figure sf : view.getSelectedFigures()) {
+                                ClassFigure sel = ownerOf(sf);
+                                if (sel != null) { sel.setBackgroundColor(chosen); applied = true; }
+                            }
+                            if (!applied) cf.setBackgroundColor(chosen);
+                            view.repaint();
+                        }
+                    }
+                }
+            }
+        });
     }
     
 //    private static String topicScopedLabel(Table base) {

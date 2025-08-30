@@ -51,7 +51,8 @@ java -jar jedit.jar -log=3
 - ~~UML: Assoziationen~~
 - ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
 - UML: PNG/SVG-Export
-- UML: Einfärben
+- ~~UML: Einfärben~~ -> Momentan jede Klasse separat.
 - UML: "Optimale" Platzierung Algo
 - ~~UML: show inherited attributes in different format (also Option).~~ tendenziell nicht. backlog?
 - Clean code / Refactoring: Trennen von UmlDockable und Drawings?
+- Clean code / Refactoring: Was von der Zeichnung persistieren? Was soll nach einem Refresh beibehalten werden? Kann man Zeichnung irgendwie sinnvoll separat speichern? Oder ggf. doch ilizip-Format?
