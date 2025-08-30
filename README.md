@@ -33,21 +33,24 @@ java -jar jedit.jar -log=3
 - autocomplete: ~~TOPIC, CLASS,~~ ASSOCIATION
 - Deployment? Wohin? Automatisch?
 - ~~Default indent size: https://chat.qwen.ai/c/7e6814f6-b48d-4678-84e1-78e8cea0fe37~~
-- Edit: Modelle zum Importieren vorschlagen 
+- ~~Edit: Modelle zum Importieren vorschlagen~~ 
 - Hyperlink: Auch für Topics, Klassen etc. (weiss nicht wie schwierig das ist).
-- UML: ~~als dockable window.~~
-- UML: vererbte Attribute
+- ~~UML: als dockable window.~~
+- ~~UML: vererbte Attribute~~
 - ~~UML: Attributtypen~~
 - UML: Ein-/Ausschalten Attributtypen und Kardinalität
 - UML: ~~Kardinalität~~
 - UML: Menu, ~~Zoom, Pan~~
-- UML: Sync
-- UML: stereotype
-- UML: Strukturen
+- UML: Option "show all attributes"
+- ~~UML: Sync~~
+- ~~UML: stereotype~~
+- ~~UML: Strukturen~~
 - ~~UML: topics~~
 - UML: Vererbungen
 - UML: Assoziationen
 - ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
 - UML: PNG/SVG-Export
 - UML: Einfärben
-- UML: show inherited attributes in different format (also Option).
+- UML: "Optimale" Platzierung Algo
+- ~~UML: show inherited attributes in different format (also Option).~~ tendenziell nicht. backlog?
+- Clean code / Refactoring

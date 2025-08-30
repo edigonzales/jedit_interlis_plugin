@@ -12,6 +12,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import ch.interlis.ili2c.metamodel.*;
 import ch.so.agi.jedit.compile.TdCache;
@@ -22,6 +23,9 @@ import org.jhotdraw.draw.DefaultDrawingEditor;
 import org.jhotdraw.draw.DefaultDrawingView;
 import org.jhotdraw.draw.Drawing;
 import org.jhotdraw.draw.DrawingEditor;
+import org.jhotdraw.draw.RectangleFigure;
+import org.jhotdraw.draw.TextFigure;
+import org.jhotdraw.draw.connector.ChopRectangleConnector;
 import org.jhotdraw.draw.tool.SelectionTool;
 
 public final class UmlDockable extends JPanel {
@@ -198,6 +202,8 @@ public final class UmlDockable extends JPanel {
         Drawing drawing = new DefaultDrawing();
         drawingView.setDrawing(drawing);
         
+        java.util.Map<String, ClassFigure> figureByScoped = new java.util.HashMap<>();
+        
         int total = topics.size() + classes.size();
         if (total == 0) return new JScrollPane(drawingView);
 
@@ -224,10 +230,35 @@ public final class UmlDockable extends JPanel {
             int col = i % cols;
             int x = gap + col * (cellW + gap);
             int y = gap + row * (cellH + gap);
-            addClassFigure(drawing, c, x, y);
+            ClassFigure cf = addClassFigure(drawing, c, x, y);
+            
+            String key = c.getScopedName(null);
+            figureByScoped.put(key, cf);
+            
             i++;
         }
 
+        // add inheritance edges (direct base only; you can loop ancestors if you want)
+        for (Table sub : classes) {
+            Element ext = sub.getExtending();
+            if (ext instanceof Table) {
+                Table sup = (Table) ext; // superclass (class OR structure)
+
+                ClassFigure subFig = figureByScoped.get(sub.getScopedName(null));
+                ClassFigure supFig = figureByScoped.get(sup.getScopedName(null));
+
+                if (subFig != null && supFig != null) {
+                    GeneralizationFigure g = new GeneralizationFigure();
+                    drawing.add(g); // add after nodes so it draws on top
+                    g.setStartConnector(subFig.connector()); // subclass
+                    g.setEndConnector(supFig.connector());   // superclass (tip points here)
+                    g.updateConnection(); // be explicit
+                } else {
+                    // superclass not on this canvas (e.g., different topic/tab) -> skip or add a stub label
+                }
+            }
+        }
+        
         JScrollPane sp = new JScrollPane(drawingView);
         installWheelZoom(drawingView, sp);     // your existing zoom helper
         installPanSupport(drawingView, editor, sp); // <-- add this
@@ -246,6 +277,8 @@ public final class UmlDockable extends JPanel {
         Drawing drawing = new DefaultDrawing();
         drawingView.setDrawing(drawing);
         
+        java.util.Map<String, ClassFigure> figureByScoped = new java.util.HashMap<>();
+
         int cols = Math.max(1, (int) Math.ceil(Math.sqrt(classes.size())));
         int cellW = 280;
         int cellH = 180;
@@ -258,10 +291,36 @@ public final class UmlDockable extends JPanel {
             int x = gap + col * (cellW + gap);
             int y = gap + row * (cellH + gap);
 
-            addClassFigure(drawing, c, x, y);
+            ClassFigure cf = addClassFigure(drawing, c, x, y);
+            
+            String key = c.getScopedName(null);
+            figureByScoped.put(key, cf);
+
             i++;
         }
 
+        // add inheritance edges (direct base only; you can loop ancestors if you want)
+        for (Table sub : classes) {
+            Element ext = sub.getExtending();
+            if (ext instanceof Table) {
+                Table sup = (Table) ext; // superclass (class OR structure)
+
+                ClassFigure subFig = figureByScoped.get(sub.getScopedName(null));
+                ClassFigure supFig = figureByScoped.get(sup.getScopedName(null));
+
+                if (subFig != null && supFig != null) {
+                    GeneralizationFigure g = new GeneralizationFigure();
+                    drawing.add(g); // add after nodes so it draws on top
+                    g.setStartConnector(subFig.connector()); // subclass
+                    g.setEndConnector(supFig.connector());   // superclass (tip points here)
+                    g.updateConnection(); // be explicit
+                } else {
+                    // superclass not on this canvas (e.g., different topic/tab) -> skip or add a stub label
+                    subFig.setForeignBaseLabel(formatTopicBaseLabel(sup));
+                }
+            }
+        }
+        
         JScrollPane sp = new JScrollPane(drawingView);
         installWheelZoom(drawingView, sp);     // your existing zoom helper
         installPanSupport(drawingView, editor, sp); // <-- add this
@@ -279,13 +338,15 @@ public final class UmlDockable extends JPanel {
     }
 
     /** Adds a ClassFigure to the drawing at (x,y). */
-    private static void addClassFigure(Drawing drawing, Table clazz, int x, int y) {
+    private static ClassFigure addClassFigure(Drawing drawing, Table clazz, int x, int y) {
         ClassFigure cf = new ClassFigure(clazz);
         drawing.add(cf);
 
         // Initial anchor; ClassFigure computes size in layout()
         cf.setBounds(new Point2D.Double(x, y), new Point2D.Double(x + 200, y + 120));
         cf.layout(); // ensure natural size is applied
+        
+        return cf;
     }
 
     private static JComponent msgPanel(String msg) {
@@ -427,4 +488,76 @@ public final class UmlDockable extends JPanel {
         Dimension ext = vp.getExtentSize();
         return new Point(ext.width / 2, ext.height / 2);
     }
+    
+    private static String formatTopicBaseLabel(Table base) {
+        // Scoped name: Model.Topic.Class or Model.Class (model-level)
+        String scoped = base.getScopedName(null);
+        if (scoped == null) {
+            return base.getName();
+        }
+        String[] p = scoped.split("\\.");
+        if (p.length >= 3) {
+            // has Topic
+            return p[p.length - 2] + "::" + p[p.length - 1];
+        }
+        // model-level: show class only (no model)
+        return p[p.length - 1];
+    }
+    
+//    private static String topicScopedLabel(Table base) {
+//        // Model.Topic.Class  → Topic::Class
+//        String scoped = base.getScopedName(null);
+//        if (scoped == null) return base.getName();
+//        String[] parts = scoped.split("\\.");
+//        if (parts.length >= 2) {
+//            return parts[parts.length - 2] + "::" + parts[parts.length - 1];
+//        }
+//        return base.getName();
+//    }
+
+//    private static void addForeignBaseStub(Drawing drawing, ClassFigure subFig, Table base) {
+//        // place the stub + label near the top-right of the subclass
+//        Rectangle2D sb = subFig.getBounds();
+//        double pad = 10;                  // gap from the class box
+//        double ax  = sb.getMaxX() + pad;  // anchor x
+//        double ay  = sb.getY() + 18;      // anchor y (near header)
+//
+//        // 1) invisible anchor the connection can attach to
+//        StubAnchorFigure anchor = new StubAnchorFigure(ax, ay, 12, 10);
+//        drawing.add(anchor);
+//
+//        // 2) human label to the right of the anchor
+//        TextFigure label = new TextFigure(topicScopedLabel(base));
+//        label.set(org.jhotdraw.draw.AttributeKeys.FONT_BOLD, Boolean.FALSE);
+//        label.set(org.jhotdraw.draw.AttributeKeys.FONT_SIZE, 11d);
+//        label.setSelectable(false);
+//        label.setTransformable(false);
+//        drawing.add(label);
+//
+//        // position label (measure current bounds to size it)
+//        Rectangle2D lb = label.getBounds();
+//        Point2D.Double la = new Point2D.Double(ax + 16, ay - 2);
+//        Point2D.Double ll = new Point2D.Double(la.x + Math.max(40, lb.getWidth()), la.y + lb.getHeight());
+//        label.setBounds(la, ll);
+//
+//        // 3) short generalization line from subclass → stub anchor (points to base)
+//        GeneralizationFigure g = new GeneralizationFigure();
+//        drawing.add(g);
+//        g.setStartConnector(subFig.connector());                 // subclass
+//        g.setEndConnector(new ChopRectangleConnector(anchor));   // foreign base stub
+//        g.updateConnection();                                    // compute once now
+//    }
+    
+//    static final class StubAnchorFigure extends RectangleFigure {
+//        StubAnchorFigure(double x, double y, double w, double h) {
+//            // invisible but connectable
+//            set(org.jhotdraw.draw.AttributeKeys.FILL_COLOR,  null);
+//            set(org.jhotdraw.draw.AttributeKeys.STROKE_COLOR, null);
+//            set(org.jhotdraw.draw.AttributeKeys.STROKE_WIDTH, 0d);
+//            setSelectable(false);
+//            setTransformable(false);
+//            setConnectable(true);
+//            setBounds(new Point2D.Double(x, y), new Point2D.Double(x + Math.max(1, w), y + Math.max(1, h)));
+//        }
+//    }
 }

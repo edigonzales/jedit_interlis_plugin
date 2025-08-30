@@ -12,6 +12,8 @@ import ch.interlis.ili2c.metamodel.*;
 import org.jhotdraw.draw.GraphicalCompositeFigure;
 import org.jhotdraw.draw.RectangleFigure;
 import org.jhotdraw.draw.TextFigure;
+import org.jhotdraw.draw.connector.ChopRectangleConnector;
+import org.jhotdraw.draw.connector.Connector;
 
 /**
  * JHotDraw 7.6 ClassFigure:
@@ -47,6 +49,7 @@ public class ClassFigure extends GraphicalCompositeFigure {
     private final TextFigure      titleTf     = new TextFigure();
     private TextFigure            abstractTf  = null;   // optional
     private TextFigure            structureTf = null;   // optional
+    private TextFigure extendsTf = null;
     private final List<TextFigure> rowFigs    = new ArrayList<>();
 
     public ClassFigure(Table clazz) {
@@ -66,10 +69,34 @@ public class ClassFigure extends GraphicalCompositeFigure {
     }
 
     public ClassFigure(String titleText, List<String> rows) {
+     // Make the composite the thing that connections and users interact with
+        setConnectable(true);
+        setSelectable(true);
+
+        // Children should not be individually selectable/transformable/connectable
+        outerRect.setSelectable(false);
+        outerRect.setTransformable(false);
+        outerRect.setConnectable(false);
+
+        titleTf.setSelectable(false);
+        titleTf.setTransformable(false);
+        if (abstractTf != null) {
+            abstractTf.setSelectable(false);
+            abstractTf.setTransformable(false);
+        }
+        if (structureTf != null) {
+            structureTf.setSelectable(false);
+            structureTf.setTransformable(false);
+        }
+        for (TextFigure tf : rowFigs) {
+            tf.setSelectable(false);
+            tf.setTransformable(false);
+        }
+        
         setPresentationFigure(outerRect);
         outerRect.set(org.jhotdraw.draw.AttributeKeys.STROKE_WIDTH, STROKE);
         outerRect.set(org.jhotdraw.draw.AttributeKeys.FILL_COLOR, Color.white);
-
+        
         headerRect.set(org.jhotdraw.draw.AttributeKeys.STROKE_WIDTH, STROKE);
         headerRect.set(org.jhotdraw.draw.AttributeKeys.FILL_COLOR, null);
         add(headerRect);
@@ -90,6 +117,16 @@ public class ClassFigure extends GraphicalCompositeFigure {
     public void setTitle(String txt) {
         titleTf.setText(txt);
         layout();
+    }
+    
+    public Connector connector() {
+        // outerRect is your presentation RectangleFigure
+        return new ChopRectangleConnector(this);
+    }
+    
+    @Override
+    public Connector findConnector(java.awt.geom.Point2D.Double p, org.jhotdraw.draw.ConnectionFigure cf) {
+        return new ChopRectangleConnector(this);
     }
 
     @Override
@@ -116,10 +153,16 @@ public class ClassFigure extends GraphicalCompositeFigure {
             sW = Math.max(1, sb.getWidth());
             sH = Math.max(1, sb.getHeight());
         }
+        
+        double eW = 0, eH = 0;
+        if (extendsTf != null) {
+            Rectangle2D eb = extendsTf.getBounds();
+            eW = Math.max(1, eb.getWidth());
+            eH = Math.max(1, eb.getHeight());
+        }
 
-        // header width must fit the widest line among structure / abstract / title
-        double headerInnerW = HPAD_L + Math.max(tW, Math.max(aW, sW)) + HPAD_R;
-
+        double headerInnerW = HPAD_L + Math.max(Math.max(tW, Math.max(aW, sW)), eW) + HPAD_R;
+        
         // --- measure rows ---
         double maxRowW = 0;
         double rowsH   = 0;
@@ -143,9 +186,10 @@ public class ClassFigure extends GraphicalCompositeFigure {
         double headerH = HPAD_T
                 + (structureTf != null ? sH + ABSTRACT_GAP : 0)
                 + (abstractTf  != null ? aH + ABSTRACT_GAP : 0)
+                + (extendsTf   != null ? eH + ABSTRACT_GAP : 0)
                 + tH
                 + HPAD_B;
-
+        
         // header rectangle
         headerRect.setBounds(
             new Point2D.Double(ox + PAD_L,          oy + y),
@@ -154,7 +198,7 @@ public class ClassFigure extends GraphicalCompositeFigure {
 
         // place lines inside header (top to bottom)
         double textY = oy + y + HPAD_T;
-
+        
         if (structureTf != null) {
             Point2D.Double sA = new Point2D.Double(ox + PAD_L + HPAD_L, textY);
             Point2D.Double sL = new Point2D.Double(sA.x + sW,           sA.y + sH);
@@ -167,6 +211,13 @@ public class ClassFigure extends GraphicalCompositeFigure {
             Point2D.Double aL = new Point2D.Double(aA.x + aW,           aA.y + aH);
             abstractTf.setBounds(aA, aL);
             textY += aH + ABSTRACT_GAP;
+        }
+        
+        if (extendsTf   != null) {
+            Point2D.Double eA = new Point2D.Double(ox + PAD_L + HPAD_L, textY);
+            Point2D.Double eL = new Point2D.Double(eA.x + eW,           eA.y + eH);
+            extendsTf.setBounds(eA, eL);
+            textY += eH + ABSTRACT_GAP;
         }
 
         Point2D.Double tA = new Point2D.Double(ox + PAD_L + HPAD_L, textY);
@@ -198,6 +249,25 @@ public class ClassFigure extends GraphicalCompositeFigure {
             new Point2D.Double(ox + totalW, oy + totalH)
         );
     }
+    
+    public void setForeignBaseLabel(String labelOrNull) {        
+        if (labelOrNull == null || labelOrNull.trim().isEmpty()) {
+            if (extendsTf != null) {
+                remove(extendsTf);
+                extendsTf = null;
+                layout();
+            }
+            return;
+        }
+        if (extendsTf == null) {
+            extendsTf = new TextFigure();
+            extendsTf.set(org.jhotdraw.draw.AttributeKeys.FONT_BOLD, Boolean.FALSE);
+            extendsTf.set(org.jhotdraw.draw.AttributeKeys.FONT_SIZE, 12d);
+            extendsTf.setText("«extends " + labelOrNull + "»");
+            add(extendsTf);
+        }
+        layout();
+    }
 
     /* ===== helpers (unchanged) ===== */
 
@@ -215,13 +285,14 @@ public class ClassFigure extends GraphicalCompositeFigure {
                 switch (kind) {
                     case INHERITED: {
                         String baseDeclScoped = declaringClassScopedName(root(a));
-                        rows.add(label + "  «from " + shortName(baseDeclScoped) + "»");
+                        //rows.add(label + "  «from " + shortName(baseDeclScoped) + "»");
                         break;
                     }
                     case OVERRIDES: {
                         AttributeDef base = (AttributeDef) a.getExtending();
                         String baseDeclScoped = declaringClassScopedName(root(base));
-                        rows.add(label + "  «overrides " + shortName(baseDeclScoped) + "." + base.getName() + "»");
+                        //rows.add(label + "  «overrides " + shortName(baseDeclScoped) + "." + base.getName() + "»");
+                        rows.add(label);
                         break;
                     }
                     default:
