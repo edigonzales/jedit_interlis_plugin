@@ -3,7 +3,9 @@ package ch.so.agi.jedit.uml;
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
+import org.gjt.sp.util.Log;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -12,6 +14,8 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -62,7 +66,7 @@ public final class UmlDockable extends JPanel {
     
     private final java.util.Map<String, java.awt.geom.Point2D.Double> rememberedPos = new java.util.HashMap<>();
     private boolean rememberPositions = jEdit.getBooleanProperty(PREF_REMEMBER_POS, true);
-    
+    private final Map<String, java.awt.Color> rememberedFills = new java.util.HashMap<>();
     
     public UmlDockable(View view, String position) {
         super(new BorderLayout(8, 8));
@@ -174,39 +178,55 @@ public final class UmlDockable extends JPanel {
         m.add(miShowAssoc);
 
         m.addSeparator();
-
-        JMenu layout = new JMenu("Layout");
-        JMenuItem autoGrid = new JMenuItem("Auto place (grid)");
-        autoGrid.addActionListener(e -> {
-            // call your layout routine on the active tab’s drawing
-            // autoPlaceCurrentCanvas();
-        });
-        layout.add(autoGrid);
-
-        JMenuItem tidy = new JMenuItem("Tidy selection");
-        tidy.addActionListener(e -> {
-            // tidySelectedFigures();
-        });
-        layout.add(tidy);
-        m.add(layout);
+        JMenu export = new JMenu("Export PNG");
+        JMenuItem expActive = new JMenuItem("Export active tab");
+        JMenuItem expAll    = new JMenuItem("Export all tabs");
+        expActive.addActionListener(e -> exportActiveTabAsPng());
+        expAll.addActionListener(e -> exportAllTabsAsPng());
+        export.add(expActive);
+        export.add(expAll);
+        m.add(export);
 
         m.addSeparator();
 
-        JMenuItem themeColors = new JMenuItem("Class fill color…");
-        themeColors.addActionListener(e -> {
-            // reuse your color chooser: maybe apply to selection
-            // openFillColorChooserForSelection();
-        });
-        m.add(themeColors);
-
-        JMenu reset = new JMenu("Reset");
-        JMenuItem resetFills = new JMenuItem("Reset class fills");
-        resetFills.addActionListener(e -> {
-            // reset all fills on current drawing
-            // resetAllClassFills();
-        });
-        reset.add(resetFills);
-        m.add(reset);
+        JMenuItem saveUml = new JMenuItem("Save UML");
+        saveUml.addActionListener(e -> saveUmlToFile());
+        m.add(saveUml);
+        
+//        m.addSeparator();
+//
+//        JMenu layout = new JMenu("Layout");
+//        JMenuItem autoGrid = new JMenuItem("Auto place (grid)");
+//        autoGrid.addActionListener(e -> {
+//            // call your layout routine on the active tab’s drawing
+//            // autoPlaceCurrentCanvas();
+//        });
+//        layout.add(autoGrid);
+//
+//        JMenuItem tidy = new JMenuItem("Tidy selection");
+//        tidy.addActionListener(e -> {
+//            // tidySelectedFigures();
+//        });
+//        layout.add(tidy);
+//        m.add(layout);
+//
+//        m.addSeparator();
+//
+//        JMenuItem themeColors = new JMenuItem("Class fill color…");
+//        themeColors.addActionListener(e -> {
+//            // reuse your color chooser: maybe apply to selection
+//            // openFillColorChooserForSelection();
+//        });
+//        m.add(themeColors);
+//
+//        JMenu reset = new JMenu("Reset");
+//        JMenuItem resetFills = new JMenuItem("Reset class fills");
+//        resetFills.addActionListener(e -> {
+//            // reset all fills on current drawing
+//            // resetAllClassFills();
+//        });
+//        reset.add(resetFills);
+//        m.add(reset);
 
         return m;
     }
@@ -216,6 +236,8 @@ public final class UmlDockable extends JPanel {
         if (rememberPositions) {
             snapshotPositionsFromTabs();
         }
+        
+        maybeLoadUmlFromFile();
 
         // Remember current selection
         Object prevKey = null;
@@ -250,7 +272,7 @@ public final class UmlDockable extends JPanel {
         
         final java.util.Map<String, java.awt.geom.Point2D.Double> posCache =
                 rememberPositions ? rememberedPos : null;
-        
+                
         for (Model model : models) {
             List<Topic> topics = collectTopics(model);
             List<Table> modelClasses = collectModelLevelClasses(model);
@@ -265,7 +287,7 @@ public final class UmlDockable extends JPanel {
                 tabs.addTab(model.getName(), msgPanel("No topics or model-level classes."));
             } else {
 //                tabs.addTab(model.getName(), canvasForOverview(topics, modelClasses));
-                JComponent overview = canvasForOverview(topics, modelClasses);
+                JComponent overview = canvasForOverview(topics, modelClasses, posCache);
                 String keyOverview  = "model:" + model.getName() + ":overview";
                 ((JComponent) overview).putClientProperty(TAB_KEY, keyOverview);
                 tabs.addTab(model.getName(), overview);
@@ -322,6 +344,360 @@ public final class UmlDockable extends JPanel {
         rememberedPos.keySet().retainAll(liveKeys);
     }
     
+    private java.io.File umlFileForBuffer() {
+        Buffer b = view.getBuffer();
+        if (b == null) return null;
+        String dir = b.getDirectory();
+        String name = b.getName(); // e.g. MyModel.ili
+        String base = name.replaceFirst("\\.[^.]*$", ""); // strip extension
+        return new java.io.File(dir, base + ".uml");
+    }
+
+    private static String colorToHex(java.awt.Color c) {
+        if (c == null) return null;
+        return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
+    }
+
+    private static java.awt.Color hexToColor(String hex) {
+        if (hex == null || hex.isEmpty()) return null;
+        try {
+            return java.awt.Color.decode(hex);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void saveUmlToFile() {
+        try {
+            // Make sure we capture the latest on-screen state
+            snapshotStateFromTabs();
+
+            java.io.File out = umlFileForBuffer();
+            if (out == null) { Toolkit.getDefaultToolkit().beep(); return; }
+
+            StringBuilder sb = new StringBuilder(16_384);
+            sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            sb.append("<uml version=\"1\">\n");
+
+            // Options
+            sb.append("  <options showAssociations=\"").append(showAssociations).append("\"/>\n");
+
+            // Class positions
+            sb.append("  <classes>\n");
+            for (Map.Entry<String, java.awt.geom.Point2D.Double> e : rememberedPos.entrySet()) {
+                String scoped = e.getKey();
+                java.awt.geom.Point2D.Double p = e.getValue();
+                java.awt.Color fill = rememberedFills.get(scoped);
+                sb.append("    <class scoped=\"").append(escapeXml(scoped)).append("\" ")
+                  .append("x=\"").append(p.x).append("\" ")
+                  .append("y=\"").append(p.y).append("\"");
+                if (fill != null) sb.append(" fill=\"").append(colorToHex(fill)).append("\"");
+                sb.append("/>\n");
+            }
+            sb.append("  </classes>\n");
+
+            sb.append("</uml>\n");
+
+            // Write atomically
+            java.io.File tmp = java.io.File.createTempFile("uml_", ".xml", out.getParentFile());
+            try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(tmp))) {
+                os.write(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            if (!tmp.renameTo(out)) {
+                // fallback
+                try (java.io.InputStream in = new java.io.FileInputStream(tmp);
+                     java.io.OutputStream outS = new java.io.FileOutputStream(out)) {
+                    in.transferTo(outS);
+                }
+                tmp.delete();
+            }
+            JOptionPane.showMessageDialog(this,
+                    "Saved UML: " + out.getAbsolutePath(),
+                    "Save UML", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to save UML: " + ex.getMessage(),
+                    "Save UML", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void maybeLoadUmlFromFile() {
+        if (!rememberedPos.isEmpty() || !rememberedFills.isEmpty()) return; // already have state
+
+        java.io.File f = umlFileForBuffer();
+        if (f == null || !f.isFile()) return;
+
+        System.err.println("******** maybeLoadUmlFromFile");
+        
+        
+        try {
+            org.w3c.dom.Document doc = javax.xml.parsers.DocumentBuilderFactory
+                    .newInstance().newDocumentBuilder().parse(f);
+            doc.getDocumentElement().normalize();
+
+            // options
+            org.w3c.dom.NodeList opts = doc.getElementsByTagName("options");
+            if (opts.getLength() > 0) {
+                org.w3c.dom.Element e = (org.w3c.dom.Element) opts.item(0);
+                String sa = e.getAttribute("showAssociations");
+                if (!sa.isEmpty()) {
+                    showAssociations = Boolean.parseBoolean(sa);
+                    jEdit.setBooleanProperty("interlis.uml.showAssociations", showAssociations);
+                }
+            }
+
+            // classes
+            org.w3c.dom.NodeList cls = doc.getElementsByTagName("class");
+            for (int i = 0; i < cls.getLength(); i++) {
+                org.w3c.dom.Element e = (org.w3c.dom.Element) cls.item(i);
+                String scoped = e.getAttribute("scoped");
+                
+                System.err.println("******** scoped: " + scoped);
+
+                if (scoped == null || scoped.isEmpty()) continue;
+                double x = Double.parseDouble(e.getAttribute("x"));
+                double y = Double.parseDouble(e.getAttribute("y"));
+                rememberedPos.put(scoped, new java.awt.geom.Point2D.Double(x, y));
+                String fill = e.getAttribute("fill");
+                if (fill != null && !fill.isEmpty()) {
+                    java.awt.Color c = hexToColor(fill);
+                    if (c != null) rememberedFills.put(scoped, c);
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to load UML: " + ex.getMessage(),
+                    "Save UML", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+
+    private static String escapeXml(String s) {
+        if (s == null) return "";
+        return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                .replace("\"","&quot;").replace("'","&apos;");
+    }
+
+    
+    private void snapshotStateFromTabs() {
+        snapshotPositionsFromTabs();
+        snapshotFillsFromTabs();
+    }
+    
+    private void snapshotFillsFromTabs() {
+        for (int i = 0; i < tabs.getTabCount(); i++) {
+            java.awt.Component comp = tabs.getComponentAt(i);
+            DefaultDrawingView dv = findDrawingView(comp);
+            if (dv == null) continue;
+
+            Drawing drawing = dv.getDrawing();
+            for (Figure f : new java.util.ArrayList<>(drawing.getChildren())) {
+                if (f instanceof ClassFigure) {
+                    ClassFigure cf = (ClassFigure) f;
+                    ch.interlis.ili2c.metamodel.Table owner = cf.getOwnerTable();
+                    if (owner != null) {
+                        String key = keyFor(owner);
+                        if (key != null && cf.getBackgroundColor() != null) {
+                            rememberedFills.put(key, cf.getBackgroundColor());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /* ---- Export API ---- */
+
+    private void exportActiveTabAsPng() {
+        File dir = currentBufferDir();
+        if (dir == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please save the ILI file first.\nI need its directory for export.",
+                "Export PNG", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        JScrollPane sp = currentScroller();
+        DefaultDrawingView view = currentView(sp);
+        if (view == null) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+        String base = fileBaseForTab(tabs.getSelectedComponent());
+        File out = new File(dir, base + ".png");
+        try {
+            exportViewToPNG(view, out, 2.0); // scale=1.0 (independent of UI zoom)
+            //exportViewToPNG(view, out); 
+            JOptionPane.showMessageDialog(this, "Exported: " + out.getAbsolutePath(),
+                    "Export PNG", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to export:\n" + ex.getMessage(),
+                    "Export PNG", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void exportAllTabsAsPng() {
+        File dir = currentBufferDir();
+        if (dir == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please save the ILI file first.\nI need its directory for export.",
+                "Export PNG", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int ok = 0, skipped = 0, failed = 0;
+        for (int i = 0; i < tabs.getTabCount(); i++) {
+            Component comp = tabs.getComponentAt(i);
+            DefaultDrawingView dv = findDrawingView(comp);
+            if (dv == null) { skipped++; continue; }
+
+            String base = fileBaseForTab(comp);
+            File out = new File(dir, base + ".png");
+            try {
+                //exportViewToPNG(dv, out);
+                exportViewToPNG(dv, out, 2.0);
+                ok++;
+            } catch (Exception ex) {
+                failed++;
+            }
+        }
+        JOptionPane.showMessageDialog(this,
+            "PNG export finished.\nSaved: " + ok + (skipped>0?("\nSkipped (no diagram): "+skipped):"")
+            + (failed>0?("\nFailed: "+failed):""),
+            "Export PNG", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /* ---- Low-level: render drawing to PNG ---- */
+
+ // ==== EXPORT: draw figures safely, without DefaultDrawing.draw ====
+ // Export at arbitrary DPI scale (1.0 = 100%, 2.0 = 200% ...)
+    private static void exportViewToPNG(DefaultDrawingView view, File outFile, double scale) throws Exception {
+        Drawing drawing = view.getDrawing();
+
+        // 1) Make sure connections are up-to-date
+        for (Figure f : new ArrayList<>(drawing.getChildren())) {
+            if (f instanceof org.jhotdraw.draw.ConnectionFigure) {
+                ((org.jhotdraw.draw.ConnectionFigure) f).updateConnection();
+            }
+        }
+
+        // 2) Compute union in *drawing* coordinates (unscaled)
+        Rectangle2D union = computeUnionBounds(drawing);
+        if (union == null || union.isEmpty()) {
+            throw new IllegalStateException("Nothing to export (no visible bounds).");
+        }
+
+        // 3) Allocate image in *device* pixels
+        int w = Math.max(1, (int) Math.ceil(union.getWidth()  * scale));
+        int h = Math.max(1, (int) Math.ceil(union.getHeight() * scale));
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        try {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            // Background
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, w, h);
+
+            // 4) IMPORTANT: apply transform before drawing
+            //    scale first, then translate by the *unscaled* union
+            g2.scale(scale, scale);
+            g2.translate(-union.getX(), -union.getY());
+
+            // 5) Draw children (no clip needed; avoids null-area issues)
+            for (Figure f : new ArrayList<>(drawing.getChildren())) {
+                f.draw(g2);
+            }
+        } finally {
+            g2.dispose();
+        }
+        ImageIO.write(img, "png", outFile);
+    }
+
+    /** Returns a safe area for a figure or null if none can be determined. */
+    private static java.awt.geom.Rectangle2D safeDrawingArea(Figure f) {
+        try {
+            java.awt.geom.Rectangle2D a = f.getDrawingArea();
+            if (a != null && !a.isEmpty()) return (java.awt.geom.Rectangle2D) a.clone();
+        } catch (Throwable ignore) {}
+
+        try {
+            // Fallbacks
+            java.awt.geom.Rectangle2D b = f.getBounds();
+            if (b != null && !b.isEmpty()) return (java.awt.geom.Rectangle2D) b.clone();
+
+            if (f instanceof org.jhotdraw.draw.BezierFigure) {
+                org.jhotdraw.geom.BezierPath p = ((org.jhotdraw.draw.BezierFigure) f).getBezierPath();
+                if (p != null) {
+                    java.awt.geom.Rectangle2D pb = p.getBounds2D();
+                    if (pb != null && !pb.isEmpty()) return (java.awt.geom.Rectangle2D) pb.clone();
+                }
+            }
+        } catch (Throwable ignore) {}
+
+        return null;
+    }
+
+    /** Union of all figure areas; skips figures that report null. */
+    private static java.awt.geom.Rectangle2D computeUnionBounds(Drawing d) {
+        java.awt.geom.Rectangle2D union = null;
+        for (Figure f : new java.util.ArrayList<>(d.getChildren())) {
+            java.awt.geom.Rectangle2D r = safeDrawingArea(f);
+            if (r == null) continue;
+            union = (union == null) ? (java.awt.geom.Rectangle2D) r.clone() : union.createUnion(r);
+        }
+        return union;
+    }
+
+    
+    /* ---- Naming & directory helpers ---- */
+
+    private File currentBufferDir() {
+        Buffer buf = view.getBuffer();
+        String dir = (buf != null) ? buf.getDirectory() : null; // jEdit Buffer
+        if (dir == null) return null;
+        return new File(dir);
+    }
+
+    private String fileBaseForTab(Component tabComp) {
+        if (!(tabComp instanceof JComponent)) {
+            // fallback to tab title
+            int idx = tabs.indexOfComponent(tabComp);
+            String title = (idx >= 0) ? tabs.getTitleAt(idx) : "diagram";
+            return sanitizeBase(title);
+        }
+        Object keyObj = ((JComponent) tabComp).getClientProperty(TAB_KEY);
+        if (!(keyObj instanceof String)) {
+            int idx = tabs.indexOfComponent(tabComp);
+            String title = (idx >= 0) ? tabs.getTitleAt(idx) : "diagram";
+            return sanitizeBase(title);
+        }
+        String key = (String) keyObj; // e.g. "model:ModelName:overview" or "topic:Model::Topic"
+        try {
+            if (key.startsWith("topic:")) {
+                String[] parts = key.substring("topic:".length()).split("::"); // ["Model","Topic"]
+                if (parts.length == 2) return sanitizeBase(parts[0] + "_" + parts[1]);
+            } else if (key.startsWith("model:")) {
+                String rest = key.substring("model:".length()); // "ModelName:overview" or similar
+                String model = rest;
+                int c = rest.indexOf(':');
+                if (c >= 0) model = rest.substring(0, c);
+                return sanitizeBase(model + "_overview");
+            }
+        } catch (Exception ignored) {}
+        // fallback
+        int idx = tabs.indexOfComponent(tabComp);
+        String title = (idx >= 0) ? tabs.getTitleAt(idx) : "diagram";
+        return sanitizeBase(title);
+    }
+
+    private static String sanitizeBase(String s) {
+        String base = s.trim().replaceAll("\\s+", "_");
+        base = base.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (base.isEmpty()) base = "diagram";
+        return base;
+    }
+
+    
     /* ======================== model traversal helpers ======================== */
 
     /** All topics declared directly in the model. */
@@ -364,7 +740,7 @@ public final class UmlDockable extends JPanel {
     /* ============================== canvases ================================= */
 
     /** Overview canvas: topics + model-level classes in one grid. */
-    private static JComponent canvasForOverview(List<Topic> topics, List<Table> classes) {
+    private  JComponent canvasForOverview(List<Topic> topics, List<Table> classes, Map<String, Point2D.Double> posCache) {
         DefaultDrawingView drawingView = new DefaultDrawingView();
         drawingView.setBackground(Color.white);
 
@@ -411,6 +787,18 @@ public final class UmlDockable extends JPanel {
             int x = gap + col * (cellW + gap);
             int y = gap + row * (cellH + gap);
             ClassFigure cf = addClassFigure(drawing, c, x, y);
+            
+            // restore origin if cached
+            if (posCache != null) {
+                String key = keyFor(c);
+                java.awt.geom.Point2D.Double p = (key != null) ? posCache.get(key) : null;
+                if (p != null) {
+                    java.awt.geom.Rectangle2D nb = cf.getBounds();
+                    cf.setBounds(new Point2D.Double(p.x, p.y),
+                                 new Point2D.Double(p.x + nb.getWidth(), p.y + nb.getHeight()));
+                }
+            }
+
             
             String key = c.getScopedName(null);
             figureByScoped.put(key, cf);
@@ -485,7 +873,7 @@ public final class UmlDockable extends JPanel {
     
     
     /** Creates a scrollable JHotDraw canvas and lays out class boxes in a grid. */
-    private static JComponent canvasFor(List<Table> classes, Model model, Map<String, Point2D.Double> posCache) {
+    private  JComponent canvasFor(List<Table> classes, Model model, Map<String, Point2D.Double> posCache) {
         DefaultDrawingView drawingView = new DefaultDrawingView();
         drawingView.setBackground(Color.white);
 
@@ -743,8 +1131,11 @@ public final class UmlDockable extends JPanel {
     }
 
     /** Adds a ClassFigure to the drawing at (x,y). */
-    private static ClassFigure addClassFigure(Drawing drawing, Table clazz, int x, int y) {
+    private  ClassFigure addClassFigure(Drawing drawing, Table clazz, int x, int y) {
         ClassFigure cf = new ClassFigure(clazz);
+        String key = keyFor(clazz);
+        java.awt.Color fill = (key != null) ? rememberedFills.get(key) : null;
+        if (fill != null) cf.setBackgroundColor(fill);
         drawing.add(cf);
 
         // Initial anchor; ClassFigure computes size in layout()
