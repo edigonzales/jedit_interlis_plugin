@@ -37,6 +37,14 @@ import org.jhotdraw.draw.tool.SelectionTool;
 
 public final class UmlDockable extends JPanel {
 
+    private static final String PREF_REMEMBER_POS = "interlis.uml.rememberPositions";
+    
+    private static final String TAB_KEY = "uml.tab.key";
+    
+    private static final double MIN_ZOOM = 0.25;
+    private static final double MAX_ZOOM = 4.0;
+    private static final double WHEEL_STEP = 1.1; // 10% per notch (fine-tune to taste)
+
     private final View view;
     private final String position;
 
@@ -52,11 +60,9 @@ public final class UmlDockable extends JPanel {
     
     private static boolean showAssociations = true;  // default on
     
-    private static final String TAB_KEY = "uml.tab.key";
+    private final java.util.Map<String, java.awt.geom.Point2D.Double> rememberedPos = new java.util.HashMap<>();
+    private boolean rememberPositions = jEdit.getBooleanProperty(PREF_REMEMBER_POS, true);
     
-    private static final double MIN_ZOOM = 0.25;
-    private static final double MAX_ZOOM = 4.0;
-    private static final double WHEEL_STEP = 1.1; // 10% per notch (fine-tune to taste)
     
     public UmlDockable(View view, String position) {
         super(new BorderLayout(8, 8));
@@ -136,14 +142,29 @@ public final class UmlDockable extends JPanel {
     private JPopupMenu buildToolbarMenu() {
         JPopupMenu m = new JPopupMenu();
 
-        JCheckBoxMenuItem showInheritance = new JCheckBoxMenuItem("Show inheritance", true);
-        showInheritance.addActionListener(e -> {
-            // toggle flag you use when drawing edges, then rebuild
-            // this.showInheritance = showInheritance.isSelected();
+//        JCheckBoxMenuItem showInheritance = new JCheckBoxMenuItem("Show inheritance", true);
+//        showInheritance.addActionListener(e -> {
+//            // toggle flag you use when drawing edges, then rebuild
+//            // this.showInheritance = showInheritance.isSelected();
+//            rebuildFromCache();
+//        });
+//        m.add(showInheritance);
+
+        // Remember positions toggle (persisted)
+        JCheckBoxMenuItem miRemember =
+                new JCheckBoxMenuItem("Remember positions", rememberPositions);
+        miRemember.addActionListener(e -> {
+            rememberPositions = miRemember.isSelected();
+            jEdit.setBooleanProperty(PREF_REMEMBER_POS, rememberPositions);
+            if (!rememberPositions) {
+                rememberedPos.clear();   // drop cache
+            } else {
+                snapshotPositionsFromTabs(); // capture current before rebuild
+            }
             rebuildFromCache();
         });
-        m.add(showInheritance);
-
+        m.add(miRemember);
+        
         JCheckBoxMenuItem miShowAssoc = new JCheckBoxMenuItem("Show associations", showAssociations);
         miShowAssoc.addActionListener(e -> {
             showAssociations = miShowAssoc.isSelected();
@@ -192,6 +213,10 @@ public final class UmlDockable extends JPanel {
     
     /** Rebuild tabs from the latest cached TD (non-blocking; shows hint if none). */
     private void rebuildFromCache() {
+        if (rememberPositions) {
+            snapshotPositionsFromTabs();
+        }
+
         // Remember current selection
         Object prevKey = null;
         int prevIndex  = tabs.getSelectedIndex();
@@ -212,6 +237,8 @@ public final class UmlDockable extends JPanel {
             return;
         }
 
+        java.util.Set<String> liveKeys = new java.util.HashSet<>();
+        
         tabs.removeAll();
         Model[] models = td.getModelsFromLastFile();
         if (models == null || models.length == 0) {
@@ -221,10 +248,18 @@ public final class UmlDockable extends JPanel {
 
         int indexToSelect = -1;
         
+        final java.util.Map<String, java.awt.geom.Point2D.Double> posCache =
+                rememberPositions ? rememberedPos : null;
+        
         for (Model model : models) {
             List<Topic> topics = collectTopics(model);
             List<Table> modelClasses = collectModelLevelClasses(model);
 
+            for (Table t : modelClasses) {
+                String k = keyFor(t);
+                if (k != null) liveKeys.add(k);
+            }
+            
             // Single tab: topics + model-level classes together
             if (topics.isEmpty() && modelClasses.isEmpty()) {
                 tabs.addTab(model.getName(), msgPanel("No topics or model-level classes."));
@@ -243,12 +278,18 @@ public final class UmlDockable extends JPanel {
             // One tab per TOPIC for its classes (kept as before)
             for (Topic topic : topics) {
                 List<Table> topicClasses = collectTopicClasses(topic);
+                
+                for (Table t : topicClasses) {
+                    String k = keyFor(t);
+                    if (k != null) liveKeys.add(k);
+                }
+                
                 String tabTitle = /*model.getName() + "::" +*/ topic.getName();
                 
                 if (topicClasses.isEmpty()) {
                     tabs.addTab(tabTitle, msgPanel("No classes in this topic."));
                 } else {
-                    JComponent topicCanvas = canvasFor(topicClasses, model);
+                    JComponent topicCanvas = canvasFor(topicClasses, model, posCache);
                     String keyTopic = "topic:" + model.getName() + "::" + topic.getName();
                     ((JComponent) topicCanvas).putClientProperty(TAB_KEY, keyTopic);
                     tabs.addTab(topic.getName(), topicCanvas);
@@ -269,10 +310,18 @@ public final class UmlDockable extends JPanel {
             tabs.setSelectedIndex(0);
         }
         
+        if (rememberPositions) {
+            pruneRememberedTo(liveKeys);
+        }
+        
         tabs.revalidate();
         tabs.repaint();
     }
 
+    private void pruneRememberedTo(java.util.Collection<String> liveKeys) {
+        rememberedPos.keySet().retainAll(liveKeys);
+    }
+    
     /* ======================== model traversal helpers ======================== */
 
     /** All topics declared directly in the model. */
@@ -436,7 +485,7 @@ public final class UmlDockable extends JPanel {
     
     
     /** Creates a scrollable JHotDraw canvas and lays out class boxes in a grid. */
-    private static JComponent canvasFor(List<Table> classes, Model model) {
+    private static JComponent canvasFor(List<Table> classes, Model model, Map<String, Point2D.Double> posCache) {
         DefaultDrawingView drawingView = new DefaultDrawingView();
         drawingView.setBackground(Color.white);
 
@@ -464,6 +513,17 @@ public final class UmlDockable extends JPanel {
             int y = gap + row * (cellH + gap);
 
             ClassFigure cf = addClassFigure(drawing, c, x, y);
+            
+            // restore origin if cached
+            if (posCache != null) {
+                String key = keyFor(c);
+                java.awt.geom.Point2D.Double p = (key != null) ? posCache.get(key) : null;
+                if (p != null) {
+                    java.awt.geom.Rectangle2D nb = cf.getBounds();
+                    cf.setBounds(new Point2D.Double(p.x, p.y),
+                                 new Point2D.Double(p.x + nb.getWidth(), p.y + nb.getHeight()));
+                }
+            }
             
             String key = c.getScopedName(null);
             figureByScoped.put(key, cf);
@@ -612,6 +672,46 @@ public final class UmlDockable extends JPanel {
 //            }
 //        }
 //    }
+    
+    private void snapshotPositionsFromTabs() {
+        for (int i = 0; i < tabs.getTabCount(); i++) {
+            java.awt.Component comp = tabs.getComponentAt(i);
+            org.jhotdraw.draw.DefaultDrawingView dv = findDrawingView(comp);
+            if (dv == null) continue;
+
+            org.jhotdraw.draw.Drawing drawing = dv.getDrawing();
+
+            // Copy to avoid concurrent modification if anything changes while iterating
+            java.util.List<org.jhotdraw.draw.Figure> figs =
+                    new java.util.ArrayList<>(drawing.getChildren());
+
+            for (org.jhotdraw.draw.Figure f : figs) {
+                if (f instanceof ClassFigure) {
+                    ClassFigure cf = (ClassFigure) f;
+                    ch.interlis.ili2c.metamodel.Table owner = cf.getOwnerTable();
+                    if (owner != null) {
+                        String key = keyFor(owner);
+                        if (key != null) {
+                            java.awt.geom.Rectangle2D b = cf.getBounds();
+                            rememberedPos.put(key,
+                                    new java.awt.geom.Point2D.Double(b.getX(), b.getY()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static org.jhotdraw.draw.DefaultDrawingView findDrawingView(java.awt.Component comp) {
+        if (comp instanceof javax.swing.JScrollPane) {
+            java.awt.Component v = ((javax.swing.JScrollPane) comp).getViewport().getView();
+            if (v instanceof org.jhotdraw.draw.DefaultDrawingView) return (org.jhotdraw.draw.DefaultDrawingView) v;
+        } else if (comp instanceof org.jhotdraw.draw.DefaultDrawingView) {
+            return (org.jhotdraw.draw.DefaultDrawingView) comp;
+        }
+        return null;
+    }
+
     
     private static List<AssociationDef> collectAllAssociations(Model model) {
         ArrayList<AssociationDef> out = new ArrayList<>();
@@ -893,6 +993,11 @@ public final class UmlDockable extends JPanel {
                 }
             }
         });
+    }
+    
+ // Helper: stable key for a class/structure
+    private static String keyFor(ch.interlis.ili2c.metamodel.Table t) {
+        return (t != null) ? t.getScopedName(null) : null; // e.g. Model.Topic.Class
     }
     
 //    private static String topicScopedLabel(Table base) {

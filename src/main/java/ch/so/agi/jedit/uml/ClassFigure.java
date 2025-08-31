@@ -57,9 +57,13 @@ public class ClassFigure extends GraphicalCompositeFigure {
     private TextFigure            structureTf = null;   // optional
     private TextFigure extendsTf = null;
     private final List<TextFigure> rowFigs    = new ArrayList<>();
+    private Table owner;
 
-    public ClassFigure(Table clazz) {
+    public ClassFigure(Table clazz) {        
         this(clazz.getName(), collectRows(clazz));
+
+        this.owner = clazz;
+        
         if (clazz.isAbstract()) {
             abstractTf = new TextFigure("«Abstract»");
             abstractTf.set(org.jhotdraw.draw.AttributeKeys.FONT_BOLD, Boolean.FALSE);
@@ -75,6 +79,8 @@ public class ClassFigure extends GraphicalCompositeFigure {
     }
 
     public ClassFigure(String titleText, List<String> rows) {
+        this.owner = null; 
+        
      // Make the composite the thing that connections and users interact with
         setConnectable(true);
         setSelectable(true);
@@ -130,6 +136,10 @@ public class ClassFigure extends GraphicalCompositeFigure {
         titleTf.setText(txt);
         layout();
     }
+    
+    public Table getOwnerTable() { 
+        return owner; 
+    } 
     
     public Connector connector() {
         // outerRect is your presentation RectangleFigure
