@@ -2,6 +2,7 @@ package ch.so.agi.jedit.uml;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.View;
+import org.gjt.sp.jedit.jEdit;
 
 import javax.swing.*;
 import java.awt.*;
@@ -46,6 +47,13 @@ public final class UmlDockable extends JPanel {
     private final JButton zoomResetBtn= new JButton("100%");
     private final JButton zoomInBtn   = new JButton("+");
     
+    private final JButton menuBtn = new JButton("⋮"); // or "\u2699" (gear)
+    private final JPopupMenu tbMenu = buildToolbarMenu();
+    
+    private static boolean showAssociations = true;  // default on
+    
+    private static final String TAB_KEY = "uml.tab.key";
+    
     private static final double MIN_ZOOM = 0.25;
     private static final double MAX_ZOOM = 4.0;
     private static final double WHEEL_STEP = 1.1; // 10% per notch (fine-tune to taste)
@@ -55,6 +63,8 @@ public final class UmlDockable extends JPanel {
         this.view = view;
         this.position = position;
 
+        showAssociations = jEdit.getBooleanProperty("interlis.uml.showAssociations", true);
+        
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         // Toolbar
@@ -82,6 +92,17 @@ public final class UmlDockable extends JPanel {
         tb.add(Box.createHorizontalStrut(4));
         tb.add(zoomInBtn);
 
+        menuBtn.setFocusable(false);
+        menuBtn.setBorderPainted(false);
+        menuBtn.setOpaque(false);
+        tb.addSeparator();
+        tb.add(menuBtn);
+
+        // Show the popup right under the button
+        menuBtn.addActionListener(e ->
+            tbMenu.show(menuBtn, 0, menuBtn.getHeight())
+        );
+        
         tb.add(Box.createHorizontalGlue()); // keep at the very end
         add(tb, BorderLayout.NORTH);
 
@@ -112,8 +133,75 @@ public final class UmlDockable extends JPanel {
         return s;
     }
     
+    private JPopupMenu buildToolbarMenu() {
+        JPopupMenu m = new JPopupMenu();
+
+        JCheckBoxMenuItem showInheritance = new JCheckBoxMenuItem("Show inheritance", true);
+        showInheritance.addActionListener(e -> {
+            // toggle flag you use when drawing edges, then rebuild
+            // this.showInheritance = showInheritance.isSelected();
+            rebuildFromCache();
+        });
+        m.add(showInheritance);
+
+        JCheckBoxMenuItem miShowAssoc = new JCheckBoxMenuItem("Show associations", showAssociations);
+        miShowAssoc.addActionListener(e -> {
+            showAssociations = miShowAssoc.isSelected();
+            jEdit.setBooleanProperty("interlis.uml.showAssociations", showAssociations);
+            rebuildFromCache(); // rebuild all tabs with new setting
+        });
+        m.add(miShowAssoc);
+
+        m.addSeparator();
+
+        JMenu layout = new JMenu("Layout");
+        JMenuItem autoGrid = new JMenuItem("Auto place (grid)");
+        autoGrid.addActionListener(e -> {
+            // call your layout routine on the active tab’s drawing
+            // autoPlaceCurrentCanvas();
+        });
+        layout.add(autoGrid);
+
+        JMenuItem tidy = new JMenuItem("Tidy selection");
+        tidy.addActionListener(e -> {
+            // tidySelectedFigures();
+        });
+        layout.add(tidy);
+        m.add(layout);
+
+        m.addSeparator();
+
+        JMenuItem themeColors = new JMenuItem("Class fill color…");
+        themeColors.addActionListener(e -> {
+            // reuse your color chooser: maybe apply to selection
+            // openFillColorChooserForSelection();
+        });
+        m.add(themeColors);
+
+        JMenu reset = new JMenu("Reset");
+        JMenuItem resetFills = new JMenuItem("Reset class fills");
+        resetFills.addActionListener(e -> {
+            // reset all fills on current drawing
+            // resetAllClassFills();
+        });
+        reset.add(resetFills);
+        m.add(reset);
+
+        return m;
+    }
+    
     /** Rebuild tabs from the latest cached TD (non-blocking; shows hint if none). */
     private void rebuildFromCache() {
+        // Remember current selection
+        Object prevKey = null;
+        int prevIndex  = tabs.getSelectedIndex();
+        if (prevIndex >= 0 && prevIndex < tabs.getTabCount()) {
+            java.awt.Component c = tabs.getComponentAt(prevIndex);
+            if (c instanceof JComponent) {
+                prevKey = ((JComponent) c).getClientProperty(TAB_KEY);
+            }
+        }
+        
         Buffer buf = view.getBuffer();
         TransferDescription td = TdCache.peekLastValid(buf);
         if (td == null) {
@@ -131,6 +219,8 @@ public final class UmlDockable extends JPanel {
             return;
         }
 
+        int indexToSelect = -1;
+        
         for (Model model : models) {
             List<Topic> topics = collectTopics(model);
             List<Table> modelClasses = collectModelLevelClasses(model);
@@ -139,18 +229,46 @@ public final class UmlDockable extends JPanel {
             if (topics.isEmpty() && modelClasses.isEmpty()) {
                 tabs.addTab(model.getName(), msgPanel("No topics or model-level classes."));
             } else {
-                tabs.addTab(model.getName(), canvasForOverview(topics, modelClasses));
+//                tabs.addTab(model.getName(), canvasForOverview(topics, modelClasses));
+                JComponent overview = canvasForOverview(topics, modelClasses);
+                String keyOverview  = "model:" + model.getName() + ":overview";
+                ((JComponent) overview).putClientProperty(TAB_KEY, keyOverview);
+                tabs.addTab(model.getName(), overview);
+                if (prevKey != null && prevKey.equals(keyOverview)) {
+                    indexToSelect = tabs.indexOfComponent(overview);
+                }
+
             }
 
             // One tab per TOPIC for its classes (kept as before)
             for (Topic topic : topics) {
                 List<Table> topicClasses = collectTopicClasses(topic);
                 String tabTitle = /*model.getName() + "::" +*/ topic.getName();
-                tabs.addTab(tabTitle, topicClasses.isEmpty()
-                        ? msgPanel("No classes in this topic.")
-                        : canvasFor(topicClasses, model));
+                
+                if (topicClasses.isEmpty()) {
+                    tabs.addTab(tabTitle, msgPanel("No classes in this topic."));
+                } else {
+                    JComponent topicCanvas = canvasFor(topicClasses, model);
+                    String keyTopic = "topic:" + model.getName() + "::" + topic.getName();
+                    ((JComponent) topicCanvas).putClientProperty(TAB_KEY, keyTopic);
+                    tabs.addTab(topic.getName(), topicCanvas);
+                    if (prevKey != null && prevKey.equals(keyTopic)) {
+                        indexToSelect = tabs.indexOfComponent(topicCanvas);
+                    }
+                }
             }
         }
+        
+        // Restore selection
+        if (indexToSelect >= 0) {
+            tabs.setSelectedIndex(indexToSelect);
+        } else if (prevIndex >= 0 && prevIndex < tabs.getTabCount()) {
+            // fallback: same index if key wasn’t found
+            tabs.setSelectedIndex(prevIndex);
+        } else if (tabs.getTabCount() > 0) {
+            tabs.setSelectedIndex(0);
+        }
+        
         tabs.revalidate();
         tabs.repaint();
     }
@@ -381,9 +499,11 @@ public final class UmlDockable extends JPanel {
 //        }
 //        wireAssociations(drawing, scope, figureByScoped);
         
-        List<AssociationDef> allAssocs = collectAllAssociations(model);
-        wireAssociationsForCanvas(drawing, allAssocs, figureByScoped);
-        
+        if (showAssociations) {
+            List<AssociationDef> allAssocs = collectAllAssociations(model);
+            wireAssociationsForCanvas(drawing, allAssocs, figureByScoped);
+        }
+
         JScrollPane sp = new JScrollPane(drawingView);
         installWheelZoom(drawingView, sp);     // your existing zoom helper
         installPanSupport(drawingView, editor, sp); // <-- add this

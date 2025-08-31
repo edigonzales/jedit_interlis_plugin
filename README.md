@@ -50,8 +50,9 @@ java -jar jedit.jar -log=3
 - ~~UML: Vererbungen~~
 - ~~UML: Assoziationen~~
 - ~~UML: Abstrakt kursiv~~ -> mit Stereotyp
+- Modell: Objektkatalog als Word.
 - UML: PNG/SVG-Export
-- ~~UML: Einfärben~~ -> Momentan jede Klasse separat.
+- ~~UML: Einfärben~~ -> Momentan jede Klasse separat. -> Option mit "Alle Klassen Einfärben"
 - UML: "Optimale" Platzierung Algo
 - ~~UML: show inherited attributes in different format (also Option).~~ tendenziell nicht. backlog?
 - Clean code / Refactoring: Trennen von UmlDockable und Drawings?
