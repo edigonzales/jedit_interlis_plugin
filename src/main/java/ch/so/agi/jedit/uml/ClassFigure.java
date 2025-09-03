@@ -59,7 +59,7 @@ public class ClassFigure extends GraphicalCompositeFigure {
     private final List<TextFigure> rowFigs    = new ArrayList<>();
     private Table owner;
 
-    public ClassFigure(Table clazz) {        
+    public ClassFigure(Viewable clazz) {        
         this(clazz.getName(), collectRows(clazz));
 
         this.owner = clazz;
@@ -362,22 +362,59 @@ public class ClassFigure extends GraphicalCompositeFigure {
 
     private static String formatAttribute(AttributeDef a) {
         String typeName = "?";
-        Type t = a.getDomainResolvingAliases();
-        if (t != null) {
-            if (t instanceof ch.interlis.ili2c.metamodel.TextType) {
+        //Type t = a.getDomainResolvingAliases();
+        Type t = a.getDomain();
+        if (t != null) {  
+            if (t instanceof ch.interlis.ili2c.metamodel.ReferenceType ) {
+                ReferenceType ref = (ReferenceType) t;
+                AbstractClassDef target = ref.getReferred();
+                if (target != null) {
+                    return target.getName();
+                }
+            } else if (t instanceof CompositionType) {
+                CompositionType comp = (CompositionType) t;
+                AbstractClassDef target = comp.getComponentType();
+                if (target != null)
+                    typeName = target.getName();
+            } else if (t instanceof ch.interlis.ili2c.metamodel.TextType) {
                 typeName = "String";
             } else if (t instanceof ch.interlis.ili2c.metamodel.NumericType) {
                 typeName = "Numeric";
-            } else if (t instanceof ch.interlis.ili2c.metamodel.SurfaceType) {
-                typeName = "Surface";
+            } if (t instanceof FormattedType && isDateOrTime((FormattedType) t)) {
+                FormattedType ft = (FormattedType) t;
+                return ft.getDefinedBaseDomain().getName();
+            } else if (t instanceof ch.interlis.ili2c.metamodel.MultiAreaType) {
+                typeName = "MultiArea";
             } else if (t instanceof ch.interlis.ili2c.metamodel.AreaType) {
                 typeName = "Area";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.MultiSurfaceType) {
+                typeName = "MultiSurface";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.SurfaceType) {
+                typeName = "Surface";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.PolylineType) {
+                typeName = "Polyline";
+            } else if (t instanceof ch.interlis.ili2c.metamodel.MultiPolylineType) {
+                typeName = "MultiPolyline";
             } else if (t instanceof ch.interlis.ili2c.metamodel.CoordType) {
-                CoordType ct = (CoordType) t;
                 NumericalType[] nts = ((CoordType) t).getDimensions();
                 typeName = "Coord" + nts.length;
+            } else if (t instanceof ch.interlis.ili2c.metamodel.MultiCoordType) {
+                NumericalType[] nts = ((MultiCoordType) t).getDimensions();
+                typeName = "MultiCoord" + nts.length;
             } else if (t instanceof ch.interlis.ili2c.metamodel.EnumerationType) {
                 typeName = a.isDomainBoolean() ? "Boolean" : a.getContainer().getName();
+            } else if (t instanceof TextOIDType) {
+                TextOIDType tt = (TextOIDType) t;
+                Type textOidType = tt.getOIDType();
+                if (textOidType instanceof TypeAlias) {
+                    typeName = ((TypeAlias) textOidType).getAliasing().getName();
+                } else {
+                    typeName = textOidType.getName();
+                }
+            } else if (t instanceof TypeAlias) {
+                TypeAlias ta = (TypeAlias) t;
+                ta.getScopedName();
+                typeName = ta.getAliasing().getName();
             } else if (t instanceof ch.interlis.ili2c.metamodel.CompositionType) {
                 typeName = ((CompositionType) t).getComponentType().getName();
             }
@@ -388,6 +425,14 @@ public class ClassFigure extends GraphicalCompositeFigure {
                 + " : " + typeName;
     }
 
+    private static boolean isDateOrTime(FormattedType formattedType) {
+        Domain baseDomain = formattedType.getDefinedBaseDomain();
+        return baseDomain == PredefinedModel.getInstance().XmlDate
+                || baseDomain == PredefinedModel.getInstance().XmlDateTime
+                || baseDomain == PredefinedModel.getInstance().XmlTime;
+    }
+
+    
     /* ===== inheritance helpers (unchanged) ===== */
 
     enum AttrKind { DECLARED_HERE, INHERITED, OVERRIDES }

@@ -1,0 +1,669 @@
+INTERLIS 2.4;
+
+MODEL DMAV_V1_0_Validierung (de) 
+AT "https://www.kgk-cgc.ch/" 
+VERSION "2024-08-10" =
+  
+IMPORTS UNQUALIFIED INTERLIS;
+IMPORTS UNQUALIFIED Text_V2;
+IMPORTS UNQUALIFIED Math_V2;
+IMPORTS DMAV_FixpunkteAVKategorie3_V1_0;
+IMPORTS DMAV_Bodenbedeckung_V1_0;
+IMPORTS DMAV_Einzelobjekte_V1_0;
+IMPORTS DMAV_Nomenklatur_V1_0;
+IMPORTS DMAV_Grundstuecke_V1_0;
+IMPORTS DMAV_Rohrleitungen_V1_0;
+IMPORTS DMAV_HoheitsgrenzenAV_V1_0;
+IMPORTS DMAV_HoheitsgrenzenLV_V1_0;
+IMPORTS DMAV_Toleranzstufen_V1_0;
+IMPORTS DMAV_Gebaeudeadressen_V1_0;
+
+    VIEW TOPIC FixpunkteKategorie3_Validierung = 
+    DEPENDS ON DMAV_FixpunkteAVKategorie3_V1_0.FixpunkteAVKategorie3;
+  
+        VIEW v_LFP3
+            PROJECTION OF DMAV_FixpunkteAVKategorie3_V1_0.FixpunkteAVKategorie3.LFP3;
+        =
+            ALL OF LFP3;
+
+            !!@ ilivalid.msg="Hoehengeometrie darf nicht gleich 0.0 sein";
+            !!@ ilivalid.msg_de="Hoehengeometrie darf nicht gleich 0.0 sein";
+            !!@ ilivalid.msg_fr="Geomaltimetrie ne peut pas être égale à 0.0";
+            !!@ ilivalid.msg_it="La quota non puo' essere uguale a 0.0, in caso di non determinazione della quota lasciare il campo vuoto";
+            MANDATORY CONSTRAINT CH031151: (
+                Hoehengeometrie <> 0.0
+            );
+
+            !! TODO: CH031252
+            !! TODO: CH031253
+            !! TODO: CH031254
+            !! TODO: CH031255
+            !! TODO: CH031256
+            !! TODO: CH031454
+            !! TODO: CH031455
+            !! TODO: CH031456
+            !! TODO: CH031457
+            !! TODO: CH031458
+
+        END v_LFP3;
+
+        VIEW v_HFP3
+            PROJECTION OF DMAV_FixpunkteAVKategorie3_V1_0.FixpunkteAVKategorie3.HFP3;
+        =
+            ALL OF HFP3;
+
+            !!@ ilivalid.msg="Hoehengeometrie darf nicht gleich 0.0 sein";
+            !!@ ilivalid.msg_de="Hoehengeometrie darf nicht gleich 0.0 sein";
+            !!@ ilivalid.msg_fr="GeomAlt ne peut pas être égale à 0";
+            !!@ ilivalid.msg_it="La quota non puo' essere uguale a 0";
+            MANDATORY CONSTRAINT CH033551: (
+                Hoehengeometrie <> 0.0
+            );
+
+            !! TODO: CH033652
+            !! TODO: CH033653
+            !! TODO: CH033654
+            !! TODO: CH033655
+            !! TODO: CH033656
+            !! TODO: CH033852
+            !! TODO: CH033853
+            !! TODO: CH033854
+            !! TODO: CH033855
+            !! TODO: CH033856
+
+        END v_HFP3;
+
+    END FixpunkteKategorie3_Validierung;
+
+    VIEW TOPIC Bodenbedeckung_Validierung = 
+    DEPENDS ON DMAV_Bodenbedeckung_V1_0.Bodenbedeckung;
+  
+        VIEW v_Bodenbedeckung
+            PROJECTION OF DMAV_Bodenbedeckung_V1_0.Bodenbedeckung.Bodenbedeckung;
+        =
+            ALL OF Bodenbedeckung;
+
+            !! TODO: CH043451 / warning
+            !! TODO: CH043452 
+
+        END v_Bodenbedeckung;
+
+    END Bodenbedeckung_Validierung;
+
+    VIEW TOPIC Einzelobjekte_Validierung = 
+    DEPENDS ON DMAV_Einzelobjekte_V1_0.Einzelobjekte;
+  
+        VIEW v_Einzelobjekt
+            PROJECTION OF DMAV_Einzelobjekte_V1_0.Einzelobjekte.Einzelobjekt;
+        =
+            ALL OF Einzelobjekt;
+
+            !!@ ilivalid.msg="Bei Art=Rinnsal muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Rinnsal muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=ru, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere ruscello la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051151: (
+                (Einzelobjektart == #Rinnsal) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+    
+            !!@ ilivalid.msg="Bei Art=schmaler_Weg muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=schmaler_Weg muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=sentier, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere sentiero la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051152: (
+                (Einzelobjektart == #schmaler_Weg) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Druckleitung muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Druckleitung muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=conduite_forcee, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere condotta forzata la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051153: (
+                (Einzelobjektart == #Druckleitung) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Bahngeleise muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Bahngeleise muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=voie_ferree, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere binari_ferrovia la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051154: (
+                (Einzelobjektart == #Bahngeleise) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Luftseilbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Luftseilbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=telepherique, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere teleferica la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051155: (
+                (Einzelobjektart == #Luftseilbahn) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Gondelbahn_Sesselbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Gondelbahn_Sesselbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=telecabine_telesiege, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere telecabina_seggiovia la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051156: (
+                (Einzelobjektart == #Gondelbahn_Sesselbahn) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Materialseilbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Materialseilbahn muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=telepherique_de_chantier, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere teleferica_per_il_materiale la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051157: (
+                (Einzelobjektart == #Materialseilbahn) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Skilift muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Skilift muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=skilift, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere scilift la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051158: (
+                (Einzelobjektart == #Skilift) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Faehre muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Faehre muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=bac, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere traghetto la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051159: (
+                (Einzelobjektart == #Faehre) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Grotte_Hoehleneingang muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Grotte_Hoehleneingang muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=grotte_entree_de_caverne, il faut définir la géométrie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere grotta_entrata_di_caverna la geometria deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH051160: (
+                (Einzelobjektart == #Grotte_Hoehleneingang) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) > 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=wichtiger_Einzelbaum muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=wichtiger_Einzelbaum muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=arbre_isole_important, il faut définir la géométrie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere albero_importante la geometria deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH051161: (
+                (Einzelobjektart == #wichtiger_Einzelbaum) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) > 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Bildstock_Kruzifix muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Bildstock_Kruzifix muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=statue_crucifix, il faut définir la géométrie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere cappella_statua_crocifisso la geometria deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH051162: (
+                (Einzelobjektart == #Bildstock_Kruzifix) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) > 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Quelle muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Quelle muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=source, il faut définir la géométrie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere sorgente la geometria deve essere del tipo puntiforme";
+            !!@ cprof="all";
+            MANDATORY CONSTRAINT CH051163: (
+                (Einzelobjektart == #Quelle) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) > 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Bezugspunkt muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Bezugspunkt muss die Geometrie in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=point_de_reference, il faut définir la géométrie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere punto_di_riferimento la geometria deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH051164: (
+                (Einzelobjektart == #Bezugspunkt) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) > 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Achse muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Achse muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=axe, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere asse la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH051165: (
+                (Einzelobjektart == #Achse) => ((objectCount(Flaechenelement) == 0) AND (objectCount(Linienelement) > 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Unterstand muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Unterstand muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=couvert_independant, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere riparo la geometria deve essere con superficie";
+            !!@ cprof="all";
+            MANDATORY CONSTRAINT CH051651: (
+                (Einzelobjektart == #Unterstand) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Hochkamin muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Hochkamin muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=cheminee, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere ciminiera la geometria deve essere con superficie";
+            MANDATORY CONSTRAINT CH051652: (
+                (Einzelobjektart == #Hochkamin) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=schmale_bestockte_Flaeche muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=schmale_bestockte_Flaeche muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=cordon_boise, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere fascia_boscata la geometria deve essere con superficie";
+            MANDATORY CONSTRAINT CH051653: (
+                (Einzelobjektart == #schmale_bestockte_Flaeche) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Silo_Turm_Gasometer muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Silo_Turm_Gasometer muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=Silo_tour_gazometre, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere silo_torre_gasoemetro la geometria deve essere con superficie";
+            !!@ cprof="all";
+            MANDATORY CONSTRAINT CH051659: (
+                (Einzelobjektart == #Silo_Turm_Gasometer) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Landungssteg darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Landungssteg muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=Debarcadere, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere debarcadero la geometria deve essere con superficie";
+            MANDATORY CONSTRAINT CH051660: (
+                (Einzelobjektart == #Landungssteg) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=unterirdisches Gebaeude darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=unterirdisches Gebaeude darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=batiment_souterrain, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere edificio_sotterraneo la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052151: (
+                (Einzelobjektart == #unterirdisches_Gebaeude) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=eingedoltes_oeffentliches_Gewaesser darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=eingedoltes_oeffentliches_Gewaesser darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=eau_canalisee_souterraine, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere acqua_sotterranea_canalizzata la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052152: (
+                (Einzelobjektart == #eingedoltes_oeffentliches_Gewaesser) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=wichtige_Treppe darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=wichtige_Treppe darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=escalier_important, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere scala importante la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052153: (
+                (Einzelobjektart == #wichtige_Treppe) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Tunnel_Unterfuehrung_Galerie darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Tunnel_Unterfuehrung_Galerie darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=tunnel_passage_inferieur_galerie, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere tunnel_sottopassaggio_galleria la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052154: (
+                (Einzelobjektart == #Tunnel_Unterfuehrung_Galerie) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Bruecke_Passerelle darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Bruecke_Passerelle darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=pont_passerelle, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere ponte passerella la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052155: (
+                (Einzelobjektart == #Bruecke_Passerelle) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Bahnsteig muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Bahnsteig muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=quai, il faut définir la géométrie dans la table Element_surfacique";
+            !!@ ilivalid.msg_it="Per il genere banchina la geometria deve essere con superficie";
+            MANDATORY CONSTRAINT CH052156: (
+                (Einzelobjektart == #Bahnsteig) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Brunnen darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Brunnen darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=fontaine, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere fontana la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052157: (
+                (Einzelobjektart == #Brunnen) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Reservoir darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Reservoir darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=reservoir, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere serbatoio la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052158: (
+                (Einzelobjektart == #Reservoir) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Pfeiler darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Pfeiler darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=pilier, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere pilastro la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052159: (
+                (Einzelobjektart == #Pfeiler) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Uferverbauung muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Uferverbauung muss die Geometrie in Flaechenelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=ouvrage_de_protection_des_rives, il faut définir la géométrie dans la table Element_surfacique ou dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere briglia la geometria deve essere con superficie";
+            MANDATORY CONSTRAINT CH052162: (
+                (Einzelobjektart == #Uferverbauung) => ((objectCount(Flaechenelement) > 0) AND (objectCount(Linienelement) == 0) AND (objectCount(Punktelement) == 0))
+            );
+
+            !!@ ilivalid.msg="Bei Art=Schwelle darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Schwelle darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=seuil, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere arginatura la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052163: (
+                (Einzelobjektart == #Schwelle) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Lawinenverbauung darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Lawinenverbauung muss die Geometrie in Linienelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=paravalanche, il faut définir la géométrie dans la table Element_lineaire";
+            !!@ ilivalid.msg_it="Per il genere riparo_antivalanghe la geometria deve essere del tipo elemento lineare";
+            MANDATORY CONSTRAINT CH052164: (
+                (Einzelobjektart == #Lawinenverbauung) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=massiver_Sockel darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=massiver_Sockel darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=socle_massif, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere zoccolo_massiccio la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052165: (
+                (Einzelobjektart == #massiver_Sockel) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Ruine_archaeologisches_Objekt darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Ruine_archaeologisches_Objekt darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=ruine_objet_archeologique, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere rovina_oggetto_archeologico la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052166: (
+                (Einzelobjektart == #Ruine_archaeologisches_Objekt) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Hochspannungsfreileitung darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Hochspannungsfreileitung darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=ligne_aerienne_a_haute_tension, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere linea_aerea_ad_alta_tensione la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052171: (
+                (Einzelobjektart == #Hochspannungsfreileitung) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=Mauer darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Mauer darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=mur, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere muro la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052177: (
+                (Einzelobjektart == #Mauer) => (objectCount(Punktelement) == 0)
+            );
+
+            !!@ ilivalid.msg="Bei Art=uebriger_Gebaeudeteil darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=uebriger_Gebaeudeteil darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=autre_corps_de_batiment, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere altra_parte_di_edificio la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052178: (
+                (Einzelobjektart == #uebriger_Gebaeudeteil) => (objectCount(Punktelement) == 0)
+            );
+			
+		    !!@ ilivalid.msg="Bei Art=Jauchengrube_Mistlege darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_de="Bei Art=Jauchengrube_Mistlege darf die Geometrie nicht in Punktelement sein";
+            !!@ ilivalid.msg_fr="Pour les objets du Genre=fosse_purin_tas_fumier, la géométrie ne peut pas être définie dans la table Element_ponctuel";
+            !!@ ilivalid.msg_it="Per il genere Pozzo nero la geometria non deve essere del tipo puntiforme";
+            MANDATORY CONSTRAINT CH052178: (
+                (Einzelobjektart == #Jauchengrube_Mistlege) => (objectCount(Punktelement) == 0)
+            );
+			
+			!! TODO: Landungssteg ... umhüllend eine Fläche. Linien dürfen nur innerhalb der Fläche sein. Neue Anforderung noch keine CheckID
+            !! TODO: CH054351
+
+        END v_Einzelobjekt;
+
+    END Einzelobjekte_Validierung;
+
+    VIEW TOPIC Nomenklatur_Validierung = 
+    DEPENDS ON DMAV_Nomenklatur_V1_0.Nomenklatur;
+    
+        VIEW v_Flurname
+            PROJECTION OF DMAV_Nomenklatur_V1_0.Nomenklatur.Flurname;
+        =
+            ALL OF Flurname;
+
+            !! TODO: CH070951 / warning
+
+        END v_Flurname;
+
+    END Nomenklatur_Validierung;
+
+
+
+    VIEW TOPIC Grundstuecke_Validierung = 
+    DEPENDS ON DMAV_Grundstuecke_V1_0.Grundstuecke;
+  
+        VIEW v_Grundstueck
+            PROJECTION OF DMAV_Grundstuecke_V1_0.Grundstuecke.Grundstueck;
+        =
+            ALL OF Grundstueck;
+
+            !! TODO: CH085551
+
+            !!@ ilivalid.msg="EGRID darf nicht mit der Zahl 0 beginnen";            
+            !!@ ilivalid.msg_de="EGRID darf nicht mit der Zahl 0 beginnen";
+            !!@ ilivalid.msg_fr="L'EGRID ne doit pas commencer par un 0 (zéro)";
+            !!@ ilivalid.msg_it="L'EGRID non deve comincare con uno 0 (zero)";
+            MANDATORY CONSTRAINT CH085554: (
+                substring(EGRID,0,1) != "0" 
+            );
+        
+            /*
+            !!@ ilivalid.msg="Summe der Teilflaechen aus Flaechenmass ist ungleich Gesamtflaechenmass";
+            !!@ ilivalid.msg_de="Summe der Teilflaechen aus Flaechenmass ist ungleich Gesamtflaechenmass";
+            !!@ ilivalid.msg_fr="La somme des parties de surface inscrite sous Superficie n'est pas égale à la donnée correspondante sous Superficie_totale";
+            !!@ ilivalid.msg_it="La somma delle superfici delle parti di Bene_immobile/DSSP/Miniera non corrisponde alla superficie totale del fondo";
+            MANDATORY CONSTRAINT CH058902: (
+                Gesamtflaechenmass == add(add(sum("SelbstaendigesDauerndesRecht->Flaechenmass"), sum("Bergwerk->Flaechenmass")), sum("Liegenschaft->Flaechenmass"))
+                !!Gesamtflaechenmass == sum("Liegenschaft->Flaechenmass") 
+            );
+             */
+            
+            !! TODO: in ähnlicher Form bereits im Originamodell:
+            !! MANDATORY CONSTRAINT CH041402: NOT(DEFINED(NummerTeilgrundstueck)) == Grundstueck->IstVollstaendig;
+
+            !!@ ilivalid.msg="Bei Grundstueck mit istVollstaendigkeit=true und mit nur 1 Objekt in Liegenschaft muss NummerTeilgrundstueck leer sein";
+            !!@ ilivalid.msg_de="Bei Grundstueck mit istVollstaendigkeit=true und mit nur 1 Objekt in Liegenschaft muss NummerTeilgrundstueck leer sein";
+            !!@ ilivalid.msg_fr="Pour un immeuble dont l'attribut Integralite=complet, et formé d'un seul objet dans la table Bien_fonds, l'attribut PartieNumeroImmeuble doit être vide";
+            !!@ ilivalid.msg_it="Per i fondi con integralità = si, e un solo oggetto in Bene_immobile, numero_parte_fondo deve restare vuoto";
+            MANDATORY CONSTRAINT CH086852: (
+                (THIS->IstVollstaendig AND elementCount(Liegenschaft) == 1) => NOT(DEFINED(Liegenschaft->NummerTeilgrundstueck)) 
+            );
+
+        END v_Grundstueck;
+
+        VIEW v_Liegenschaft
+            PROJECTION OF DMAV_Grundstuecke_V1_0.Grundstuecke.Liegenschaft;
+        =
+            ALL OF Liegenschaft;
+
+            !! TODO: CH086951 / warning
+
+            !!@ ilivalid.msg="NummerTeilgrundstueck muss innerhalb des gleichen Grundstuecks eindeutig sein";
+            !!@ ilivalid.msg_de="NummerTeilgrundstueck muss innerhalb des gleichen Grundstuecks eindeutig sein";
+            !!@ ilivalid.msg_fr="L'attribut PartieNumeroImmeubledoit être univoque pour un même immeuble";
+            !!@ ilivalid.msg_it="Il NumeroParteFondo deve essere univoco all'interno dello stesso fondo";
+            UNIQUE CH086851: NummerTeilgrundstueck, Grundstueck;
+
+        END v_Liegenschaft;
+
+        VIEW v_SelbstaendigesDauerndesRecht
+            PROJECTION OF DMAV_Grundstuecke_V1_0.Grundstuecke.SelbstaendigesDauerndesRecht;
+        =
+            ALL OF SelbstaendigesDauerndesRecht;
+
+            !!@ ilivalid.msg="NummerTeilgrundstueck muss innerhalb des gleichen Grundstuecks eindeutig sein";
+            !!@ ilivalid.msg_de="NummerTeilgrundstueck muss innerhalb des gleichen Grundstuecks eindeutig sein";
+            !!@ ilivalid.msg_fr="L'attribut PartieNumeroImmeubledoit être univoque pour un même immeuble";
+            !!@ ilivalid.msg_it="Il NumeroParteFondo deve essere univoco all'interno dello stesso fondo";
+            UNIQUE CH087251: NummerTeilgrundstueck, Grundstueck;
+
+            !! TODO: CH087252
+            !! TODO: CH087351
+
+        END v_SelbstaendigesDauerndesRecht;
+
+
+        VIEW v_Bergwerk
+            PROJECTION OF DMAV_Grundstuecke_V1_0.Grundstuecke.Bergwerk;
+        =
+            ALL OF Bergwerk;
+
+            !!@ ilivalid.msg="NummerTeilgrundstueck muss innerhalb des gleichen Grundstücks eindeutig sein";
+            !!@ ilivalid.msg_de="NummerTeilgrundstueck muss innerhalb des gleichen Grundstücks eindeutig sein";
+            !!@ ilivalid.msg_fr="PartieNumeroImmeuble doit être univoque à l'intérieur du même immeuble";
+            !!@ ilivalid.msg_it="Il NumeroParteFondo deve essere univoco all'interno dello stesso fondo";
+            UNIQUE CH087651: NummerTeilgrundstueck, Grundstueck;
+
+            !! TODO: CH087652
+
+        END v_Bergwerk;
+
+
+    END Grundstuecke_Validierung;
+
+    VIEW TOPIC Rohrleitungen_Validierung = 
+    DEPENDS ON DMAV_Rohrleitungen_V1_0.Rohrleitungen;
+  
+        VIEW v_Leitungsobjekt
+            PROJECTION OF DMAV_Rohrleitungen_V1_0.Rohrleitungen.Leitungsobjekt;
+        =
+            ALL OF Leitungsobjekt;
+
+            !!@ ilivalid.msg="Hoehe darf nicht 0.0 sein";
+            !!@ ilivalid.msg_de="Hoehe darf nicht 0.0 sein";
+            !!@ ilivalid.msg_fr="L'altitude ne peut pas être égale à 0";
+            !!@ ilivalid.msg_it="La quota non puo' essere 0";
+            MANDATORY CONSTRAINT CH092551: (
+                Punktelement->Hoehengeometrie <> 0.0
+            );
+
+        END v_Leitungsobjekt;
+
+    END Rohrleitungen_Validierung;
+
+    VIEW TOPIC HoheitsgrenzenAV_Validierung = 
+    DEPENDS ON DMAV_HoheitsgrenzenAV_V1_0.HoheitsgrenzenAV;
+  
+        VIEW v_Gemeinde
+            PROJECTION OF DMAV_HoheitsgrenzenAV_V1_0.HoheitsgrenzenAV.Gemeinde;
+        =
+            ALL OF Gemeinde;
+
+            !! TODO: CH112352
+            !! TODO: CH112951
+        
+        END v_Gemeinde;
+
+        VIEW v_Gemeindegrenze
+            PROJECTION OF DMAV_HoheitsgrenzenAV_V1_0.HoheitsgrenzenAV.Gemeindegrenze;
+        =
+            ALL OF Gemeindegrenze;
+
+            !! TODO: CH113051 / warning
+        
+        END v_Gemeindegrenze;
+
+        VIEW v_Bezirksgrenzabschnitt
+            PROJECTION OF DMAV_HoheitsgrenzenAV_V1_0.HoheitsgrenzenAV.Bezirksgrenzabschnitt;
+        =
+            ALL OF Bezirksgrenzabschnitt;
+
+            !! TODO: CH120153
+        
+        END v_Bezirksgrenzabschnitt;
+
+        VIEW v_Kantonsgrenzabschnitt
+            PROJECTION OF DMAV_HoheitsgrenzenAV_V1_0.HoheitsgrenzenAV.Kantonsgrenzabschnitt;
+        =
+            ALL OF Kantonsgrenzabschnitt;
+
+            !! TODO: CH130153
+        
+        END v_Kantonsgrenzabschnitt;
+
+    END HoheitsgrenzenAV_Validierung;
+
+    VIEW TOPIC HoheitsgrenzenLV_Validierung = 
+    DEPENDS ON DMAV_HoheitsgrenzenLV_V1_0.HoheitsgrenzenLV;
+  
+        VIEW v_Landesgrenze
+            PROJECTION OF DMAV_HoheitsgrenzenLV_V1_0.HoheitsgrenzenLV.Landesgrenze;
+        =
+            ALL OF Landesgrenze;
+
+            !! TODO: CH140153
+        
+        END v_Landesgrenze;
+
+    END HoheitsgrenzenLV_Validierung;
+
+    VIEW TOPIC Toleranzstufen_Validierung = 
+    DEPENDS ON DMAV_Toleranzstufen_V1_0.Toleranzstufen;
+  
+        VIEW v_Toleranzstufe
+            PROJECTION OF TS ~ DMAV_Toleranzstufen_V1_0.Toleranzstufen.Toleranzstufe;
+        =
+            ALL OF TS;
+
+            !! TODO: CH160351 / warning
+        
+        END v_Toleranzstufe;
+
+    END Toleranzstufen_Validierung;       
+
+    VIEW TOPIC Gebaeudeadressen_Validierung = 
+    DEPENDS ON DMAV_Gebaeudeadressen_V1_0.Gebaeudeadressen;
+  
+        VIEW v_Gebaeudeeingang
+            PROJECTION OF DMAV_Gebaeudeadressen_V1_0.Gebaeudeadressen.Gebaeudeeingang;
+        =
+            ALL OF Gebaeudeeingang;
+
+            !!@ ilivalid.check = warning
+            !!@ ilivalid.msg="Status=real muss mit Status von Lokalisation übereinstimmen";
+            !!@ ilivalid.msg_de="Status=real muss mit Status von Lokalisation übereinstimmen";
+            !!@ ilivalid.msg_fr="Validite=reel doit correspondre a la validite de la localisation";
+            !!@ ilivalid.msg_it="Stato=reale deve corrispondere con lo stato della Localizzazione";
+            MANDATORY CONSTRAINT CH193851: (
+                (Gebaeudestatus == #real) => (Lokalisation->Lokalisationsstatus == #real)
+            );
+
+            !!@ ilivalid.msg="Bei Status=projektiert muss AttributeProvisorisch=true sein";
+            !!@ ilivalid.msg_de="Bei Status=projektiert muss AttributeProvisorisch=true sein";
+            !!@ ilivalid.msg_fr="Si Validite=projete, il faut que Attributs_provisoires=true";
+            !!@ ilivalid.msg_it="Per la Validità= in progetto, il campo Attributi_provvisori deve essere = true";
+            MANDATORY CONSTRAINT CH194051: (
+                (Gebaeudestatus == #projektiert) => (AttributeProvisorisch == #true)
+            );
+
+            !! TODO: CH194254
+
+            !!@ ilivalid.check = warning
+            !!@ ilivalid.msg="In Hausnummer (Polizeinummer oder Gebaeudeversicherungsnummer) darf vor, zwischen oder nach Hausnummer und Buchstabenzusatz kein Leerschlag oder kein Trennzeichen sein";
+            !!@ ilivalid.msg_de="In Hausnummer (Polizeinummer oder Gebaeudeversicherungsnummer) darf vor, zwischen oder nach Hausnummer und Buchstabenzusatz kein Leerschlag oder kein Trennzeichen sein";
+            !!@ ilivalid.msg_fr="Il n'est pas licite d'insérer un espace ou un signe quelconque avant, entre, ou après le numéro de maison et sa particule (lettre). Concerne aussi le numéro de police ou le numéro d'assurance du bâtiment";
+            !!@ ilivalid.msg_it="Per il Numero_casa, tra il numero e la lettera non devono esistere spazi vuoti,sottolineature o tratti";
+            MANDATORY CONSTRAINT CH194451: (
+                matches(Hausnummer,"^[^\\s]+$")
+            );
+
+            !!@ ilivalid.msg="EGID und EDID müssen zusammen eindeutig sein";
+            !!@ ilivalid.msg_de="EGID und EDID müssen zusammen eindeutig sein";
+            !!@ ilivalid.msg_fr="La combinaison des identifiants EGID et EDID doit être univoque";
+            !!@ ilivalid.msg_it="REA_EGID e EDID devono, insieme, essere univoci";
+            UNIQUE CH194651: EGID, EDID;
+
+            !!@ ilivalid.msg="Bei Gebaeudeeingang mit EGID fehlt der zugehörige EDID";
+            !!@ ilivalid.msg_de="Bei Gebaeudeeingang mit EGID fehlt der zugehörige EDID";
+            !!@ ilivalid.msg_fr="Une entrée de bâtiment possédant un identifiant EGID devrait aussi posséder un identifiant GWR_EDID";
+            !!@ ilivalid.msg_it="Per l'entrata di edificio con REA_EGID, manca il relativo REA_EDID";
+            MANDATORY CONSTRAINT CH194751: (
+                DEFINED(EGID) => DEFINED(EDID)
+            );
+
+            !! TODO: GWR-Gedöns
+
+        END v_Gebaeudeeingang;
+
+    END Gebaeudeadressen_Validierung;
+
+END DMAV_V1_0_Validierung.

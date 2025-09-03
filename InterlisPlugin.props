@@ -24,7 +24,7 @@ plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
 compileCurrentFile.label=Compile current file
 toggleCompileOnSave.label=Toggle compile on save
 prettyPrintCurrentFile.label=Pretty print current file
-interlis-uml-show.label=Show UML diagram
+interlis-uml-show.label=Show UML diagram (interactive)
 interlis-uml-toggle.label=Toggle UML diagram
 interlis-collect-keywords.label=Collect model tags
 

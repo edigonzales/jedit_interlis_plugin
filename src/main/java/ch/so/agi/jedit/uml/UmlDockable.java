@@ -716,10 +716,10 @@ public final class UmlDockable extends JPanel {
         for (Iterator<?> it = model.iterator(); it.hasNext();) {
             Object o = it.next();
             if (o instanceof Topic) continue; // skip topics here
-            if (o instanceof Table) {
-                Table t = (Table) o;
-                out.add(t); // classes and structures
-            }
+//            if (o instanceof Table) {
+//                Table t = (Table) o;
+//                out.add(t); // classes and structures
+//            }
         }
         return out;
     }
@@ -729,10 +729,15 @@ public final class UmlDockable extends JPanel {
         ArrayList<Table> out = new ArrayList<>();
         for (Iterator<?> it = topic.iterator(); it.hasNext();) {
             Object o = it.next();
-            if (o instanceof Table) {
-                Table t = (Table) o;
-                out.add(t); // classes and structures
+//            if (o instanceof Table) {
+//                Table t = (Table) o;
+//                out.add(t); // classes and structures
+//            }
+            if (o instanceof Viewable) {
+                Viewable v = (Viewable) o;
+                out.add(v); // classes and structures
             }
+
         }
         return out;
     }
