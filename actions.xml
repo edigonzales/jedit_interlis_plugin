@@ -40,4 +40,11 @@
             ch.so.agi.jedit.keywords.ModelKeywordCollector.collectToNewBuffer(view);
         </CODE>
     </ACTION>
+    
+    <ACTION NAME="interlis-uml-show-static">
+        <CODE>
+            ch.so.agi.jedit.uml.UmlStatic.show(view, buffer);
+        </CODE>
+    </ACTION>
+
 </ACTIONS>

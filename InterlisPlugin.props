@@ -18,14 +18,16 @@ plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
     prettyPrintCurrentFile \
     sidekick.parser.interlis_parser-switch \
     interlis-collect-keywords \
-    interlis-uml-show
+    interlis-uml-show \
+    interlis-uml-show-static
     
 # Action labels
 compileCurrentFile.label=Compile current file
 toggleCompileOnSave.label=Toggle compile on save
 prettyPrintCurrentFile.label=Pretty print current file
 interlis-uml-show.label=Show UML diagram (interactive)
-interlis-uml-toggle.label=Toggle UML diagram
+interlis-uml-show-static.label=Show UML diagram (static)
+#interlis-uml-toggle.label=Toggle UML diagram
 interlis-collect-keywords.label=Collect model tags
 
 # Messages
