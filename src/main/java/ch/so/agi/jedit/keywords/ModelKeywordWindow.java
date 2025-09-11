@@ -20,7 +20,7 @@ public class ModelKeywordWindow {
         new SwingWorker<String, Void>() {
             @Override 
             protected String doInBackground() {
-                Log.log(Log.DEBUG, this, "Calling API...");
+                Log.log(Log.DEBUG, this, "Calling AI api...");
                 return responseSupplier.get();
             }
             @Override 
@@ -29,7 +29,7 @@ public class ModelKeywordWindow {
                 try {
                     resp = get();
                 } catch (Exception ex) {
-                    resp = "Error calling api:\n" + ex.getMessage();
+                    resp = "Error calling AI api:\n" + ex.getMessage();
                 }
                 buildAndShow(owner, prompt, resp); // runs on EDT (done() is on EDT)
             }

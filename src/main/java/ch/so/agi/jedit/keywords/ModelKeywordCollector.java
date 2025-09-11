@@ -5,12 +5,14 @@ import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
 import ch.interlis.ili2c.metamodel.Topic;
 import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.ModelDiscoveryService;
 import ch.so.agi.jedit.compile.TdCache;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
+import org.gjt.sp.util.Log;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -23,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
 /**
- * Todo....
  *
  * <metadata>
  *   <model name="..." >
@@ -92,6 +93,7 @@ public final class ModelKeywordCollector {
         }
 
         final String promptCopy = prompt;
+        Log.log(Log.DEBUG, ModelKeywordCollector.class, "Start collecting keywords for model.");
         ModelKeywordWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));        
     }
 

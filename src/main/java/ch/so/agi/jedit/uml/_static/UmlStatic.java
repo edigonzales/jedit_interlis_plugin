@@ -48,11 +48,9 @@ public class UmlStatic {
             } 
             
             LivePreview.get().show(htmlFile); 
-//            java.awt.Desktop.getDesktop().browse(URI.create(Paths.get("file://", htmlFile.toString()).toString()));
         } catch (IOException e) {
             e.printStackTrace();
             GUIUtilities.error(view, "error-creating-static-uml-file", new String[] { e.getMessage() });
         }
     }
-
 }

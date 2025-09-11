@@ -4,7 +4,6 @@ import org.gjt.sp.jedit.AbstractOptionPane;
 import org.gjt.sp.jedit.jEdit;
 
 import javax.swing.*;
-import java.awt.*;
 
 @SuppressWarnings("serial")
 public class InterlisOptionPane extends AbstractOptionPane {
@@ -45,7 +44,6 @@ public class InterlisOptionPane extends AbstractOptionPane {
                     jEdit.getProperty(P_OPENAI_BASE_URL,
                         jEdit.getProperty(P_OPENAI_BASE_URL + ".default")));
 
-            System.err.println("************************* " + jEdit.getProperty(P_OPENAI_MODEL));
             openaiModelFld  = new JTextField(
                     jEdit.getProperty(P_OPENAI_MODEL,
                         jEdit.getProperty(P_OPENAI_MODEL + ".default")));

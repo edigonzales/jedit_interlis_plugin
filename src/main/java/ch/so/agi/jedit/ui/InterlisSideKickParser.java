@@ -69,21 +69,19 @@ public class InterlisSideKickParser extends SideKickParser {
         // dem Filesystem).
         TransferDescription td = TdCache.peek(buffer);
         Log.log(Log.DEBUG, this, "TransferDescription is stale or missing.");
-        System.err.println("ist td null (= stale or missing)? ");
 
         if (td != null) { // cached & up-to-date
-            System.err.println("td ist nicht null: " + td.getLastModel());
-            System.err.println("outline / tree wird erstellt. Anschliessend return");
+            Log.log(Log.DEBUG, this, "TransferDescription is not null.");
+            Log.log(Log.DEBUG, this, "outline / tree wird erstellt und anschliessend direkt returniert.");
             buildTree(buffer, td, root);
             return data; // full outline
         }
         
         // 2. Schedule compile in background if not cached (or stale).  
-        System.err.println("td null (entweder nicht im Cache oder Datei hat sich geändert) ist, es wird der Cache erstellt.");
+        Log.log(Log.DEBUG, this, "TransferDescription is null. Entweder nicht im Cache oder Datei hat sich geändert. Es wird der Cache erstellt.");
         TdCache.get(buffer).thenAccept(ast -> {
             if (ast == null) return; // syntax error
-
-            System.err.println("**** thenAccept");
+            Log.log(Log.DEBUG, this, "thenAccept");
 
             // Re-parse the buffer on the EDT so SideKick can rebuild UI 
             SwingUtilities.invokeLater(() -> 
@@ -231,7 +229,7 @@ public class InterlisSideKickParser extends SideKickParser {
         int lastDot = path.lastIndexOf('.');
         if (lastDot >= 0 && parts.length >= 2) {
             String prefix = parts[parts.length - 1];          // text after the last dot
-            System.err.println("**** prefix:" + prefix + "********");
+            Log.log(Log.DEBUG, this, "prefix:" + prefix);
             if (prefix.isEmpty()) {
                 // RULE: require at least one character after the dot
                 //return null;
@@ -374,141 +372,6 @@ public class InterlisSideKickParser extends SideKickParser {
         }
         return cur;
     }
-
-//    /** Resolve model by name (case-insensitive), searching local models, then their imports (transitively). */
-//    private static Model resolveModel(TransferDescription td, String name) {
-//        if (td == null || name == null) return null;
-//        String target = name.toUpperCase(java.util.Locale.ROOT);
-//        // Prefer models declared in this file
-//        for (Model m : td.getModelsFromLastFile()) {
-//            String n = m.getName();
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(target)) return m;
-//        }
-//        // Then search imports transitively
-//        for (Model m : td.getModelsFromLastFile()) {
-//            Model found = findInImportsRecursive(m, target, new java.util.HashSet<Model>());
-//            if (found != null) return found;
-//        }
-//        return null;
-//    }
-//
-//    private static Model findInImportsRecursive(Model m, String targetUpper, java.util.Set<Model> seen) {
-//        if (m == null || !seen.add(m)) return null;
-//        Model[] imps = m.getImporting();
-//        if (imps == null) return null;
-//        for (Model imp : imps) {
-//            if (imp == null) continue;
-//            String n = imp.getName();
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(targetUpper)) return imp;
-//            Model found = findInImportsRecursive(imp, targetUpper, seen);
-//            if (found != null) return found;
-//        }
-//        return null;
-//    }
-//
-//    /** Find a top-level child (Topic/Viewable/Domain/Unit/Function) by name, case-insensitive. */
-//    private static Element findChildInModelByName(Model model, String name) {
-//        String t = name.toUpperCase(java.util.Locale.ROOT);
-//        for (Iterator<?> it = model.iterator(); it.hasNext();) {
-//            Object o = it.next();
-//            if (!(o instanceof Element)) continue;
-//            Element e = (Element)o;
-//            String n = e.getName();
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
-//                return e;
-//        }
-//        return null;
-//    }
-//
-//    /** Find a child by name inside a Container (e.g., Topic). */
-//    private static Element findChildInContainerByName(Container container, String name) {
-//        String t = name.toUpperCase(java.util.Locale.ROOT);
-//        for (Iterator<?> it = container.iterator(); it.hasNext();) {
-//            Object o = it.next();
-//            if (!(o instanceof Element)) continue;
-//            Element e = (Element)o;
-//            String n = e.getName();
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t))
-//                return e;
-//        }
-//        return null;
-//    }
-//
-//    /** Does this Viewable have an attribute or role with that name? */
-//    private static boolean hasAttributeOrRole(Viewable v, String name) {
-//        String t = name.toUpperCase(java.util.Locale.ROOT);
-//        for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
-//            ViewableTransferElement ve = (ViewableTransferElement) it.next();
-//            Object obj = ve.obj;
-//            String n = null;
-//            if (obj instanceof AttributeDef) {
-//                n = ((AttributeDef)obj).getName();
-//            } else {
-//                // Roles etc. (if you want explicit RoleDef import, handle here)
-//                System.err.println("**************** WTF reflection: Warum????");
-//                try { n = (String) obj.getClass().getMethod("getName").invoke(obj); }
-//                catch (Exception ignore) {}
-//            }
-//            if (n != null && n.toUpperCase(java.util.Locale.ROOT).equals(t)) return true;
-//        }
-//        return false;
-//    }
-//
-//    /** Immediate children names of a parent node for completion. */
-//    private static List<String> collectChildrenNames(Object parent) {
-//        ArrayList<String> out = new ArrayList<>();
-//        if (parent instanceof Model) {
-//            Model m = (Model) parent;
-//            for (Iterator<?> it = m.iterator(); it.hasNext();) {
-//                Object o = it.next();
-//                if (!(o instanceof Element)) continue;
-//                Element e = (Element)o;
-//                String n = e.getName();
-//                if (n == null) continue;
-//                if (e instanceof Topic
-//                 || e instanceof Viewable
-//                 || e instanceof Domain
-//                 || e instanceof ch.interlis.ili2c.metamodel.Unit
-//                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
-//                    out.add(n);
-//                }
-//            }
-//        } else if (parent instanceof Topic) {
-//            System.err.println("****** parent ist topic");
-//            Topic t = (Topic) parent;
-//            for (Iterator<?> it = t.iterator(); it.hasNext();) {
-//                Object o = it.next();
-//                if (!(o instanceof Element)) continue;
-//                Element e = (Element)o;
-//                String n = e.getName();
-//                if (n == null) continue;
-//                if (e instanceof Viewable
-//                 || e instanceof Domain
-//                 || e instanceof ch.interlis.ili2c.metamodel.Unit
-//                 || e instanceof ch.interlis.ili2c.metamodel.Function) {
-//                    out.add(n);
-//                }
-//            }
-//        } else if (parent instanceof Viewable) {
-//            Viewable v = (Viewable) parent;
-//            for (Iterator<?> it = v.getAttributesAndRoles2(); it.hasNext();) {
-//                ViewableTransferElement ve = (ViewableTransferElement) it.next();
-//                Object obj = ve.obj;
-//                if (obj instanceof AttributeDef) {
-//                    String n = ((AttributeDef)obj).getName();
-//                    if (n != null) out.add(n);
-//                } else {
-//                    // RoleDef etc. via reflection to avoid new imports
-//                    try {
-//                        System.err.println("**************** good lord reflection: Warum????");
-//                        String n = (String) obj.getClass().getMethod("getName").invoke(obj);
-//                        if (n != null) out.add(n);
-//                    } catch (Exception ignore) {}
-//                }
-//            }
-//        }
-//        return out;
-//    }
     
     private static final Pattern IMPORTS_WORD = Pattern.compile("(?i)\\bIMPORTS\\b");
 
@@ -568,7 +431,6 @@ public class InterlisSideKickParser extends SideKickParser {
         
         return new ImportsInfo(prefixStartAbs, prefix, already);
     }
-    
 
     /* ============================ insertion =============================== */
 
