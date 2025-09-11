@@ -36,6 +36,7 @@ import ch.interlis.ili2c.metamodel.Viewable;
 import ch.interlis.ili2c.metamodel.ViewableTransferElement;
 
 import ch.so.agi.jedit.compile.TdCache;
+import ch.so.agi.jedit.uml._static.UmlStatic;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,13 +57,12 @@ public class InterlisSideKickParser extends SideKickParser {
     // - beim Öffnen von Sidekick (also des Trees ("Outline"))
     @Override
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
-        
+        Log.log(Log.DEBUG, UmlStatic.class, "SideKickParsedData.parse()");
+
         // 0. Create an (initially empty) tree. 
         final SideKickParsedData data = new SideKickParsedData(buffer.getName());
         final DefaultMutableTreeNode root = data.root;
-        
-        System.err.println("**** SideKickParsedData parse");
-        
+                
         // 1. Try to get a ready TransferDescription from cache 
         // td ist null, falls der Buffer nicht im Cache ist oder
         // nicht mehr gültig, weil sich die Datei geändert hat (auf

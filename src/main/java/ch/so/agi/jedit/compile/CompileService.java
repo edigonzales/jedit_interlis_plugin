@@ -37,8 +37,8 @@ public final class CompileService {
             Log.log(Log.DEBUG, CompileService.class, "td: " + td);
             
             if (td != null && log != null) {
-                System.err.println("*** log und td ungleich null");
-
+                Log.log(Log.DEBUG, CompileService.class, "log und td ungleich null");
+                
                 rebuildUiFromCachedTd(view, buffer, td, log);
                 ConsoleUtil.showLog(view, log); 
                 updateErrorList(view, buffer, log); // keep diagnostics visible

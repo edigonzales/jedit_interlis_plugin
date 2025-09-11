@@ -10,12 +10,11 @@ java -jar jedit.jar -log=3
 
 ## notes
 
-- TdCache funktioniert nur, wenn Modell gültig ist, da sond td==null ist.
 
 
 ## todo
 
-- Parsing von TransferDescriptioin vereinheitlichen (Sidekick und UML)
+- ~~Parsing von TransferDescriptioin vereinheitlichen (Sidekick und UML)~~
 - ~~meta info in props~~
 - ~~dependency handling?~~
 - Keyboard shortcut (default): Geht bei mir noch nicht. Ist es überhaupt sinnvoll? Oder soll man das den Benutzer entscheiden lassen.
