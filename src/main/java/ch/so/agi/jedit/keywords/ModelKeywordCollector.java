@@ -5,7 +5,6 @@ import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
 import ch.interlis.ili2c.metamodel.Topic;
 import ch.interlis.ili2c.metamodel.TransferDescription;
-import ch.so.agi.jedit.ModelDiscoveryService;
 import ch.so.agi.jedit.compile.TdCache;
 
 import org.gjt.sp.jedit.Buffer;
