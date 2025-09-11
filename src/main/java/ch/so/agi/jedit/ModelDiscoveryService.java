@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.util.Log;
 
@@ -17,13 +18,15 @@ import ch.interlis.ilirepository.impl.RepositoryAccess;
 import ch.interlis.ilirepository.impl.RepositoryAccessException;
 import ch.interlis.ilirepository.impl.RepositoryVisitor;
     
+/**
+ * Wird für das Vorschlagen/Vervollständigen der Modellnamen im SideKickParser benötigt.
+ */
 public class ModelDiscoveryService {
     private static final String P_REPOS = "interlis.repos";
 
     // Thread-safe cache for model metadata
     private static final Map<String, ModelMetadata> MODEL_CACHE = new ConcurrentHashMap<>();
     private static boolean initialized = false;
-
 
     public static void initialize() {
         if (initialized) {
@@ -37,7 +40,7 @@ public class ModelDiscoveryService {
                 if (repositoryUrl.equalsIgnoreCase("%ILI_DIR") || repositoryUrl.equalsIgnoreCase("%JAR_DIR")) {
                     continue;
                 }
-                System.err.println("**** repositoryUrl: " + repositoryUrl);
+                Log.log(Log.DEBUG, ModelDiscoveryService.class, "repositoryUrls: " + repositoryUrls);
                 discoverModelsFromRepository(repositoryUrl);
             }
             initialized = true;
@@ -58,10 +61,10 @@ public class ModelDiscoveryService {
             visitor.visitRepositories();
             
             List<ModelMetadata> mergedModelMetadatav = modelLister.getResult2();
-            System.err.println("**************************** mergedModelMetadatav: " + mergedModelMetadatav.size());
-                      
+            Log.log(Log.DEBUG, ModelDiscoveryService.class, "mergedModelMetadatav.size(): " + mergedModelMetadatav.size());
+            
             List<ModelMetadata> latestMergedModelMetadatav = RepositoryAccess.getLatestVersions2(mergedModelMetadatav);
-            System.err.println("**************************** latestMergedModelMetadatav: " + latestMergedModelMetadatav.size());
+            Log.log(Log.DEBUG, ModelDiscoveryService.class, "latestMergedModelMetadatav.size(): " + latestMergedModelMetadatav.size());
             
             for (ModelMetadata mmd : latestMergedModelMetadatav) {
                 MODEL_CACHE.put(mmd.getName(), mmd);
@@ -70,41 +73,11 @@ public class ModelDiscoveryService {
         } catch (RepositoryAccessException e) {
             e.printStackTrace();
             Log.log(Log.ERROR, ModelDiscoveryService.class, "Error while fetching repositories: " + e.getMessage());
-        }
+            GUIUtilities.error(jEdit.getActiveView(), "error-while-fetching-repositories", new String[] { e.getMessage() });
 
-//        try {
-//            // Dummy implementation - replace with actual repository access logic
-//            List<ModelMetadata> models = fetchModelMetadataFromRepository(repositoryUrl);
-//            
-//            for (ModelMetadata model : models) {
-//                modelCache.put(model.getName(), model);
-//            }
-//            
-//        } catch (Exception e) {
-////            logger.log(Level.WARNING, 
-////                String.format("Failed to discover models from repository: %s", repositoryUrl), e);
-//        }
+        }
     }
-    
-   private List<ModelMetadata> fetchModelMetadataFromRepository(String repositoryUrl) {
-       // Simulate network delay
-       try {
-           Thread.sleep(100);
-       } catch (InterruptedException e) {
-           Thread.currentThread().interrupt();
-       }
-       
-       // Dummy data - replace with actual repository parsing logic
-       List<ModelMetadata> dummyModels = new ArrayList<>();
-       String repoName = repositoryUrl.replaceAll("https?://", "").replaceAll("[^a-zA-Z0-9]", "_");
-       
-//       dummyModels.add(new ModelMetadata(repoName + "_Model1", "1.0", "First model from " + repoName));
-//       dummyModels.add(new ModelMetadata(repoName + "_Model2", "2.1", "Second model from " + repoName));
-//       dummyModels.add(new ModelMetadata(repoName + "_CommonModel", "1.5", "Common model from " + repoName));
-       
-       return dummyModels;
-   }
-    
+        
     public static List<String> searchModelsByName(String searchTerm) {
         if (!initialized) {
             throw new IllegalStateException("Service not initialized. Call initialize() first.");
@@ -158,6 +131,4 @@ public class ModelDiscoveryService {
     public boolean isInitialized() {
         return initialized;
     }
-
-
 }

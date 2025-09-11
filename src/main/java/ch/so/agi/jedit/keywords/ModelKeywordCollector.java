@@ -5,7 +5,6 @@ import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.Table;
 import ch.interlis.ili2c.metamodel.Topic;
 import ch.interlis.ili2c.metamodel.TransferDescription;
-import ch.so.agi.jedit.ModelDiscoveryWindow;
 import ch.so.agi.jedit.compile.TdCache;
 
 import org.gjt.sp.jedit.Buffer;
@@ -93,7 +92,7 @@ public final class ModelKeywordCollector {
         }
 
         final String promptCopy = prompt;
-        ModelDiscoveryWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));        
+        ModelKeywordWindow.showWhenReady(view, prompt, () -> callOpenAI(promptCopy, apiUrl, apiKey, modelName));        
     }
 
     private static String buildXml(TransferDescription td) {

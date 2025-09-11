@@ -1,14 +1,11 @@
 package ch.so.agi.jedit;
 
-import java.util.List;
-
 import javax.swing.SwingWorker;
 
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
 
-import ch.interlis.ilirepository.impl.ModelMetadata;
 import ch.so.agi.jedit.compile.CompileService;
 import ch.so.agi.jedit.ui.AutoCloser;
 import ch.so.agi.jedit.uml._static.LivePreview;
@@ -55,10 +52,11 @@ public class InterlisPlugin extends EBPlugin {
             }
         }        
     }
-    
+
     public static void toggleCompileOnSave() {
         jEdit.setBooleanProperty(PROP_COMPILE_ON_SAVE, !compileOnSave());
     }
+    
     public static boolean compileOnSave() {
         return jEdit.getBooleanProperty(PROP_COMPILE_ON_SAVE, false);
     }

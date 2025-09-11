@@ -1,4 +1,4 @@
-package ch.so.agi.jedit;
+package ch.so.agi.jedit.keywords;
 
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.util.Log;
@@ -8,9 +8,9 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.function.Supplier;
 
-public class ModelDiscoveryWindow {
+public class ModelKeywordWindow {
     
-    private ModelDiscoveryWindow() {}
+    private ModelKeywordWindow() {}
     
     public static void show(View owner, String prompt, String response) {
         buildAndShow(owner, prompt, response);
