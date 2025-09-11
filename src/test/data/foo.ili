@@ -1,0 +1,29 @@
+INTERLIS 2.3;
+
+/** !!------------------------------------------------------------------------------
+ * !! Version    | wer | Änderung
+ * !!------------------------------------------------------------------------------
+ * !! 2025-08-11 | abr  | Initalversion
+ * !!==============================================================================
+ */
+!!@ furtherInformation=https://example.com/path/to/information
+!!@ shortDescription="a short description"
+!!@ title="a title"
+!!@ technicalContact=mailto:acme@example.com
+!!@ tags="foo,bar,fubar"
+MODEL Foo (de)
+  AT "https://example.com"
+  VERSION "2025-08-11"
+  =
+
+  TOPIC Bar (ABSTRACT) =
+
+    CLASS Fubar (ABSTRACT) =
+    END Fubar;
+
+    CLASS ggg =
+    END ggg;
+
+  END Bar;
+
+END Foo.

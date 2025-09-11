@@ -37,16 +37,32 @@ public class InterlisPlugin extends EBPlugin {
     }
      
     @Override public void handleMessage(EBMessage msg) {
+        
+        
+        System.err.println("COS handler @" + System.identityHashCode(this)
+        + " msg=" + msg.getClass().getSimpleName());
+        
         if (!compileOnSave()) {
             return;            
         }
 
         if (msg instanceof BufferUpdate) {
+            
+            System.err.println(msg.getClass());
+            
             BufferUpdate bu = (BufferUpdate) msg;
+            
+            System.err.println(bu.getSource());
+            System.err.println(bu.getWhat());
+            System.err.println(bu.getView());
 
-            if (bu.getWhat() == BufferUpdate.SAVED) {
+
+            if (bu.getWhat() == BufferUpdate.SAVED) { 
                 Buffer b = bu.getBuffer();
                 if (b != null && b.getName().toLowerCase().endsWith(".ili")) {
+                    
+                    System.err.println("*************************************** compile on save");
+                    
                     CompileService.compile(bu.getView(), b);   
                 }                    
             }

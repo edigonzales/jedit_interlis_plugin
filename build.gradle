@@ -118,4 +118,5 @@ tasks.register("copyPluginToJedit", Copy) {
     }
 
     into("${System.properties['user.home']}/Library/jEdit/jars")
+    //into("${System.properties['user.home']}/sources/jEdit/portable-settings/jars")
 }

@@ -10,6 +10,16 @@ java -jar jedit.jar -log=3
 
 ## notes
 
+- tipps:
+ * fonts
+ * keyboard shortcuts machen
+ * rough... ecken und kanten. 
+ * error list als dockable alles als dockable empfehlenswert
+ * java 21. betrifft aber glaubs nur macos: java -jar  -Xms2g -Xmx2g -Dsun.java2d.metal=false build/jedit.jar -settings=../jEdit/portable-settings wegen metal. ggf -XX:+UseParallelGC
+ * 
+ * ...
+
+Jedes Feature beschreiben und dann 23Fr.-Kolleg die Arbeit machen lassen.
 
 
 ## todo
@@ -56,4 +66,6 @@ java -jar jedit.jar -log=3
 - UML: "Optimale" Platzierung Algo
 - ~~UML: show inherited attributes in different format (also Option).~~ tendenziell nicht. backlog?
 - Clean code / Refactoring: Trennen von UmlDockable und Drawings?
-- Clean code / Refactoring: Was von der Zeichnung persistieren? Was soll nach einem Refresh beibehalten werden? Kann man Zeichnung irgendwie sinnvoll separat speichern? Oder ggf. doch ilizip-Format?
+- Clean code / Refactoring: Was von der Zeichnung persistieren? Was soll nach einem Refresh beibehalten werden? Kann man Zeichnung 
+irgendwie sinnvoll separat speichern? Oder ggf. doch ilizip-Format?
+- Clean code / Refactoring: Infos aus TD zusammensuchen könnte/sollte man konsolidieren. Es wird an verschiedenen Orten mehrfach gemacht.
