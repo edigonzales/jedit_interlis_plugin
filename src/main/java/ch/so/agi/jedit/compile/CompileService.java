@@ -2,6 +2,7 @@ package ch.so.agi.jedit.compile;
 
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.ModelDiscoveryService;
 import ch.so.agi.jedit.compile.Ili2cUtil.Result;
 import ch.so.agi.jedit.console.ConsoleUtil;
 import errorlist.*;
@@ -24,15 +25,16 @@ public final class CompileService {
     
     public static void compile(View view, Buffer buffer) {  
         
-        System.err.println("*** buffer is dirty: " + buffer.isDirty());
+        // A buffer is considered "dirty" when it has been modified but those changes have not yet been saved to disk.
+        Log.log(Log.DEBUG, CompileService.class, "Is buffer dirty? " + buffer.isDirty());
         
         if (!buffer.isDirty()) {
             TransferDescription td = TdCache.peek(buffer);
             Path log = TdCache.peekLog(buffer);
 
-            System.err.println("*** buffer is dirty 2: " + buffer.isDirty());
-            System.err.println("*** log: " + log);
-            System.err.println("*** td: " + td);
+            Log.log(Log.DEBUG, CompileService.class, "Buffer must not be dirty? " + buffer.isDirty());
+            Log.log(Log.DEBUG, CompileService.class, "log: " + log);
+            Log.log(Log.DEBUG, CompileService.class, "td: " + td);
             
             if (td != null && log != null) {
                 System.err.println("*** log und td ungleich null");
@@ -47,32 +49,23 @@ public final class CompileService {
         new SwingWorker<Ili2cUtil.Result,Void>() {
             
             @Override protected Ili2cUtil.Result doInBackground() {
-                System.err.println("*** SwingWorker");
-                System.err.println("*** foo 1");
+                Log.log(Log.DEBUG, CompileService.class, "SwingWorker: doInBackground");
                 return Ili2cUtil.run(buffer, view, true);
             }
 
             @Override protected void done() {
-                System.err.println("*** SwingWorker DONE");
+                Log.log(Log.DEBUG, CompileService.class, "SwingWorker: done");
                 try {
                     Ili2cUtil.Result res = get(); // back on EDT
                     if (res.log() == null) {
-                        System.err.println("*** log == null");
+                        Log.log(Log.DEBUG, CompileService.class, "SwingWorker: done -> log == null");
                         return;
                     }
 
                     ConsoleUtil.showLog(view, res.log());
                     updateErrorList(view, buffer, res.log());
                     cacheTd(buffer, res.td(), res.log());
-                    SideKickPlugin.parse(view, true);
-                    
-                    // TODO
-//                  // OPTIONAL: provide data for Ctrl-click hyperlinks
-//                  for (Model m : td.getModels())
-//                      InterlisHyperlinkSource.putModel(
-//                              m.getName(),
-//                              m.getSourceFile().getAbsolutePath());
-                    
+                    SideKickPlugin.parse(view, true);                    
                 } catch (Exception e) {
                     Log.log(Log.ERROR, this, e);
                 }
@@ -102,7 +95,7 @@ public final class CompileService {
     }
     
     private static void rebuildUiFromCachedTd(View v, Buffer buf, TransferDescription td, Path log) {
-        System.out.println("*** rebuildUiFromCachedTd");
+        Log.log(Log.DEBUG, CompileService.class, "rebuildUiFromCachedTd");
         TdCache.put(buf, td, log); // ensure cache revision matches
         SideKickPlugin.parse(v, true); // refresh outline immediately
     }

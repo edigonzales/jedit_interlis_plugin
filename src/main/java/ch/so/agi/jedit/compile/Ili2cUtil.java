@@ -3,7 +3,6 @@ package ch.so.agi.jedit.compile;
 import ch.ehi.basics.logging.EhiLogger;
 import ch.interlis.ili2c.Ili2cSettings;
 import ch.interlis.ili2c.config.*;
-import ch.interlis.ili2c.metamodel.Ili2cMetaAttrs;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.iox_j.logging.FileLogger;
 

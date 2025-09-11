@@ -4,6 +4,9 @@ import console.Console;
 import console.Output;
 import console.Shell;
 
+/**
+ * Damit beim erstmaligen Starten die Console leer bleibt.
+ */
 public class InterlisShell extends Shell {
     
     public InterlisShell() {

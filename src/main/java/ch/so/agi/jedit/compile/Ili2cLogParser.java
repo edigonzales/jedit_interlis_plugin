@@ -26,6 +26,9 @@ public class Ili2cLogParser {
      *    3 = line number  (base‑1 in log)
      *    4 = message
      */
+    /**
+     * Wird für ErrorList benötigt.
+     */
     private static final Pattern LINE =
         Pattern.compile("^(Error|Warning):\\s+([^:]+):(\\d+):\\s*(.*)$");
 

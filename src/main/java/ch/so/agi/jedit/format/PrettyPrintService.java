@@ -6,6 +6,7 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 import org.gjt.sp.jedit.*;
 import org.gjt.sp.util.Log;
@@ -17,6 +18,7 @@ import ch.interlis.ili2c.generator.Interlis2Generator;
 import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.interlis.ilirepository.IliManager;
+import ch.so.agi.jedit.compile.TdCache;
 
 public class PrettyPrintService {
     private static final String P_REPOS = "interlis.repos";
@@ -40,10 +42,9 @@ public class PrettyPrintService {
             return;
         }
         
-        String inputFile = buffer.getPath();
         try {
             TransferDescription desc = new TransferDescription();
-            TransferDescription td = getTransferDescription(inputFile);
+            TransferDescription td = TdCache.get(buffer).get();
             for (Model model : td.getModelsFromLastFile()) {
                 desc.add(model);
             }
@@ -64,32 +65,13 @@ public class PrettyPrintService {
 
             pane.getTextArea().setCaretPosition(Math.min(caret, buffer.getLength()));
             
-            Log.log(Log.MESSAGE, PrettyPrintService.class, "Pretty print done (" + buffer.getName() + ")");
+            Log.log(Log.DEBUG, PrettyPrintService.class, "Pretty print done (" + buffer.getName() + ")");
             
-//            Files.copy(outputFile, Paths.get(inputFile), StandardCopyOption.REPLACE_EXISTING);
             return;
-        } catch (IOException | Ili2cException e) {
+        } catch (IOException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
             GUIUtilities.error(view, "error-on-prettyprint", null);
             return;
-        }
+        } 
     }
-    
-    // TODO move to Ili2cUtil?
-    private static TransferDescription getTransferDescription(String iliFile) throws Ili2cException {
-        IliManager manager = new IliManager();        
-        
-        String ilidirs = jEdit.getProperty(P_REPOS);
-        if (ilidirs == null || ilidirs.isEmpty()) {
-            ilidirs = Ili2cSettings.DEFAULT_ILIDIRS;
-        }
-        
-        manager.setRepositories(ilidirs.split(";"));
-        ArrayList<String> iliFiles = new ArrayList<String>();        
-        iliFiles.add(iliFile);
-        Configuration config = manager.getConfigWithFiles(iliFiles);
-        TransferDescription td = ch.interlis.ili2c.Ili2c.runCompiler(config);
-        return td;
-    }
-
 }

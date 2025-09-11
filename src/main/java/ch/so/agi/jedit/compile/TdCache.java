@@ -1,6 +1,5 @@
 package ch.so.agi.jedit.compile;
 
-import ch.interlis.ili2c.metamodel.Container;
 import ch.interlis.ili2c.metamodel.Domain;
 import ch.interlis.ili2c.metamodel.Element;
 import ch.interlis.ili2c.metamodel.Function;
@@ -18,10 +17,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.*;
 
@@ -45,14 +44,16 @@ public final class TdCache {
     
     // Return a Future; caller may block or attach a callback.
     public static CompletableFuture<TransferDescription> get(Buffer buf) {
-        System.out.println("***** get ******");
-        System.out.println("size(get): " + MAP.size());
+        Log.log(Log.DEBUG, TdCache.class, "get()");
+        Log.log(Log.DEBUG, TdCache.class, "get() --> MAP.size(): " + MAP.size());
+
         long rev = buf.getLastModified(); // timestamp of the file on disk at the time it was last read or written 
         Entry e = MAP.get(buf);
 
         if (e != null && e.revision == rev) {
-            System.err.println("******* e != null && e.revision == rev");
-            System.err.println("entry ist immer noch gültig (siehe Bedingung oben)");
+            Log.log(Log.DEBUG, TdCache.class, "e != null && e.revision == rev");
+            Log.log(Log.DEBUG, TdCache.class, "entry ist immer noch gültig (siehe Bedingung oben)");
+
             return e.future; // still valid           
         }
 
@@ -60,10 +61,11 @@ public final class TdCache {
         CompletableFuture<TransferDescription> cf = new CompletableFuture<>();
         EXEC.execute(() -> {
             try {
-                System.err.println("******* submit new parsing task");
-                System.err.println("Hier wird der Compiler angeworfen.");
+                Log.log(Log.DEBUG, TdCache.class, "submit new parsing task");
+                Log.log(Log.DEBUG, TdCache.class, "Hier wird der Compiler angeworfen.");
                 Result result = Ili2cUtil.run(buf, null, true);
-                System.err.println("Gerade nach Compiler");
+                Log.log(Log.DEBUG, TdCache.class, "Direkt nach Compiler-Aufruf.");
+
                 cf.complete(result.td()); // success (td may be null)
                 
                 synchronized (MAP) { // WeakHashMap not thread-safe
@@ -71,7 +73,7 @@ public final class TdCache {
                     if (entry != null && entry.future == cf) {  // still the latest entry?
                         MAP.put(buf, new Entry(rev, cf, result.log()));
                         if (cf.get() != null) {
-                            Log.log(Log.DEBUG, TdCache.class, "Modell ist valide und TransferDescription wird in spezieller Map gespeichert");
+                            Log.log(Log.DEBUG, TdCache.class, "Modell ist valide und TransferDescription wird in zusätzlicher, spezieller Map gespeichert");
                             MAP_LAST_VALID.put(buf, cf.get());    
                         }
                     }
@@ -97,30 +99,28 @@ public final class TdCache {
     
     // Check if buffer is dirty. Handle accordingly.
     public static TransferDescription peek(Buffer buf) {
-        System.err.println("******* PEEK");
-        System.out.println("size(peek): " + MAP.size());
-        System.err.println("******* buffer is dirty: " + buf.isDirty());
+        Log.log(Log.DEBUG, TdCache.class, "peek()");
+        Log.log(Log.DEBUG, TdCache.class, "peek() -> MAP.size(): " + MAP.size());
 
         Entry e = MAP.get(buf);
         if (e == null || e.revision != buf.getLastModified()) {
-            System.err.println("******* PEEK 1");
-            System.err.println("e: " + e);
+            Log.log(Log.DEBUG, TdCache.class, "e == null || e.revision != buf.getLastModified()");
+            Log.log(Log.DEBUG, TdCache.class, "e: " + e);
             return null; // stale or missing            
         }
 
-        System.err.println("Es gibt einen Eintrag für diesen Buffer...");
-        System.err.println("e.revision: " + e.revision);
+        Log.log(Log.DEBUG, TdCache.class, "Es gibt einen Eintrag für diesen Buffer...");
+        Log.log(Log.DEBUG, TdCache.class, "e.revision: " + e.revision);
         
         Future<TransferDescription> f = e.future;
         if (!f.isDone()) {
-            System.err.println("******* PEEK 2");
+            Log.log(Log.DEBUG, TdCache.class, "!f.isDone()");
             return null; // still parsing            
         }
 
         try { // already finished
-            System.err.println("******* PEEK 3");
-            System.err.println(f.get().getClass());
-            System.err.println(e.log);
+            Log.log(Log.DEBUG, TdCache.class, "parsing already finished");
+            Log.log(Log.DEBUG, TdCache.class, "e.log: " + e.log);
             return f.get(); // quick, no block
         } catch (Exception ex) {
             return null; // failed → treat as absent
@@ -194,12 +194,11 @@ public final class TdCache {
     
     // Collect only top-level, user-meaningful symbols.
     private static void collectTopLevelNames(Model model, List<String> out) {
-        for (java.util.Iterator<?> it = model.iterator(); it.hasNext(); ) {
+        for (Iterator<?> it = model.iterator(); it.hasNext(); ) {
             Object o = it.next();
             if (!(o instanceof Element)) continue;
             Element e = (Element) o;
             String name = e.getName();
-            //System.out.println("**** collectTopLevelNames: " + name);
             if (name == null) continue;
 
             if (e instanceof Topic
