@@ -21,9 +21,6 @@ public final class LivePreview {
 
     public synchronized void show(Path htmlFile) {
         ensureServer();
-        
-        System.err.println("***************************************");
-        
         server.setContent(htmlFile);
         server.openInBrowserOnce(); // first time only
         server.reload();            // every call: tell browser to reload
