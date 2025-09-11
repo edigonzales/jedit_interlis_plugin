@@ -3,9 +3,9 @@ package ch.so.agi.jedit;
 import javax.swing.SwingWorker;
 
 import org.gjt.sp.jedit.*;
-import org.gjt.sp.jedit.msg.BufferUpdate;
 import org.gjt.sp.util.Log;
 
+import ch.so.agi.jedit.compile.CompileOnSaveBus;
 import ch.so.agi.jedit.compile.CompileService;
 import ch.so.agi.jedit.ui.AutoCloser;
 import ch.so.agi.jedit.uml._static.LivePreview;
@@ -15,7 +15,7 @@ public class InterlisPlugin extends EBPlugin {
         
     @Override
     public void start() {
-        EditBus.addToBus(this);
+        CompileOnSaveBus.install();
         AutoCloser.install();
         SwingWorker<Object, Void> sw = new SwingWorker<Object, Void>() {
             @Override
@@ -30,43 +30,10 @@ public class InterlisPlugin extends EBPlugin {
 
     @Override
     public void stop() {
-        EditBus.removeFromBus(this);
+        CompileOnSaveBus.uninstall();
         CompileService.unregisterAll();
         LivePreview.get().stop();
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] stopped");
-    }
-     
-    @Override public void handleMessage(EBMessage msg) {
-        
-        
-        System.err.println("COS handler @" + System.identityHashCode(this)
-        + " msg=" + msg.getClass().getSimpleName());
-        
-        if (!compileOnSave()) {
-            return;            
-        }
-
-        if (msg instanceof BufferUpdate) {
-            
-            System.err.println(msg.getClass());
-            
-            BufferUpdate bu = (BufferUpdate) msg;
-            
-            System.err.println(bu.getSource());
-            System.err.println(bu.getWhat());
-            System.err.println(bu.getView());
-
-
-            if (bu.getWhat() == BufferUpdate.SAVED) { 
-                Buffer b = bu.getBuffer();
-                if (b != null && b.getName().toLowerCase().endsWith(".ili")) {
-                    
-                    System.err.println("*************************************** compile on save");
-                    
-                    CompileService.compile(bu.getView(), b);   
-                }                    
-            }
-        }        
     }
 
     public static void toggleCompileOnSave() {
