@@ -19,7 +19,10 @@ java -jar jedit.jar -log=3
  * 
  * ...
 
-Jedes Feature beschreiben und dann 23Fr.-Kolleg die Arbeit machen lassen.
+- Jedes Feature beschreiben und dann 23Fr.-Kolleg die Arbeit machen lassen.
+- Beginnen mit Theme und Fonts (auch line numbering)
+- syntax highlighing 
+
 
 
 ## todo
