@@ -40,6 +40,7 @@ buffer-not-saved.message=There are unsaved changes in the current buffer
 interlis-collect-no-td.title=No compiled model available
 interlis-collect-no-td.message=Please compile the file once before collecting keywords.
 interlis-collect-no-prompt.message=Could not read prompt file.
+error-creating-static-uml-file.message=Error when trying to create uml file:\n{0}
 
 # Options / Settings
 # user‑changeable defaults 

@@ -11,6 +11,7 @@ import org.gjt.sp.util.Log;
 import ch.interlis.ilirepository.impl.ModelMetadata;
 import ch.so.agi.jedit.compile.CompileService;
 import ch.so.agi.jedit.ui.AutoCloser;
+import ch.so.agi.jedit.uml._static.LivePreview;
 
 public class InterlisPlugin extends EBPlugin {
     private static final String PROP_COMPILE_ON_SAVE = "interlis.compileOnSave";
@@ -34,6 +35,7 @@ public class InterlisPlugin extends EBPlugin {
     public void stop() {
         EditBus.removeFromBus(this);
         CompileService.unregisterAll();
+        LivePreview.get().stop();
         Log.log(Log.MESSAGE, this, "[InterlisPlugin] stopped");
     }
      

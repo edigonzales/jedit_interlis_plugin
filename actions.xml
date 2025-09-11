@@ -43,7 +43,7 @@
     
     <ACTION NAME="interlis-uml-show-static">
         <CODE>
-            ch.so.agi.jedit.uml.UmlStatic.show(view, buffer);
+            ch.so.agi.jedit.uml._static.UmlStatic.show(view, buffer);
         </CODE>
     </ACTION>
 
