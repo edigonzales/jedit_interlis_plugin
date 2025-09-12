@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import org.apache.poi.openxml4j.opc.OPCPackage;
@@ -25,10 +26,9 @@ import org.apache.poi.openxml4j.opc.PackagingURIHelper;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.poi.xwpf.usermodel.XWPFStyles;
-
+import org.apache.xmlbeans.XmlBeans;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation;
@@ -39,12 +39,23 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHpsMeasure;
 
+import ch.interlis.ili2c.metamodel.TransferDescription;
+import ch.so.agi.jedit.compile.TdCache;
+
 public final class CreateDocxAction {
-    public static void createDocx(final View view, Buffer buffer) {
+    /**
+     * Renders a DOCX based on an INTERLIS TransferDescription.
+     * - Loads /template.docx from resources
+     * - Strips template styles to avoid schema clashes
+     * - Adds minimal default run props (Arial 11pt) in-memory
+     * - Sets A4 portrait
+     * - Writes model/topic/class tables via Ili2DocxRenderer
+     */
+    public static void createDocx(View view, Buffer buffer) {
         // 1) Ask for output file
         final JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Save DOCX");
-        chooser.setSelectedFile(new java.io.File("document.docx"));
+        chooser.setSelectedFile(new java.io.File("object_catalog.docx"));
         if (chooser.showSaveDialog(view) != JFileChooser.APPROVE_OPTION) return;
 
         final Path outPath = chooser.getSelectedFile().toPath();
@@ -56,14 +67,15 @@ public final class CreateDocxAction {
                     if (in == null) throw new IOException("Resource /template.docx not found on classpath");
 
                     // --- Open OPC and strip styles BEFORE XWPF parses the package ---
-                    try (OPCPackage pkg = OPCPackage.open(in)) {
+                    try (OPCPackage pkg = OPCPackage.open(in)) {                        
                         // main document part
                         List<PackagePart> docs = pkg.getPartsByContentType(XWPFRelation.DOCUMENT.getContentType());
                         if (docs.isEmpty()) throw new IOException("template.docx has no /word/document.xml part");
                         PackagePart docPart = docs.get(0);
 
                         // remove any /word/styles.xml relationships and the part itself
-                        PackageRelationshipCollection stylesRels = docPart.getRelationshipsByType(XWPFRelation.STYLES.getRelation());
+                        PackageRelationshipCollection stylesRels =
+                                docPart.getRelationshipsByType(XWPFRelation.STYLES.getRelation());
                         if (stylesRels != null) {
                             for (PackageRelationship rel : stylesRels) {
                                 PackagePartName targetName = PackagingURIHelper.createPartName(rel.getTargetURI());
@@ -74,13 +86,50 @@ public final class CreateDocxAction {
 
                         // --- Now safe to let XWPF read the package ---
                         try (XWPFDocument doc = new XWPFDocument(pkg)) {
-                            // Content (uses our defaults; no setFont* calls)
-                            XWPFParagraph p = doc.createParagraph();
-                            XWPFRun run = p.createRun();
-                            run.setText("Hello from InterlisPlugin (template-based).");
-                            run.addBreak();
-                            run.setText("Styles were removed from the template, defaults added in-memory.");
+                            trimLeadingEmptyParagraphs(doc);
 
+                            // Ensure A4 portrait (twips)
+                            CTSectPr sectPr = doc.getDocument().getBody().isSetSectPr()
+                                    ? doc.getDocument().getBody().getSectPr()
+                                    : doc.getDocument().getBody().addNewSectPr();
+                            CTPageSz pageSz = sectPr.isSetPgSz() ? sectPr.getPgSz() : sectPr.addNewPgSz();
+                            pageSz.setW(BigInteger.valueOf(11906));
+                            pageSz.setH(BigInteger.valueOf(16838));
+                            pageSz.setOrient(STPageOrientation.PORTRAIT);
+
+                            // Minimal defaults (Arial 11pt) as a fresh styles part (schema-safe)
+                            XWPFStyles styles = doc.createStyles(); // ensures /word/styles.xml exists
+                            CTStyles ct = (CTStyles) XmlBeans.getContextTypeLoader()
+                                    .newInstance(CTStyles.type, null);
+                            CTDocDefaults dd = ct.addNewDocDefaults();
+                            CTRPrDefault rpd = dd.addNewRPrDefault();
+                            CTRPr rpr = rpd.addNewRPr();
+                            CTFonts rFonts = rpr.addNewRFonts();
+                            rFonts.setAscii("Arial");
+                            rFonts.setHAnsi("Arial");
+                            rFonts.setCs("Arial");
+                            CTHpsMeasure sz = rpr.addNewSz();      // 11pt = 22 half-points
+                            sz.setVal(BigInteger.valueOf(22));
+                            CTHpsMeasure szCs = rpr.addNewSzCs();
+                            szCs.setVal(BigInteger.valueOf(22));
+                            styles.setStyles(ct);
+
+                            TransferDescription td = TdCache.peekLastValid(buffer);
+                            
+                            // --- Title ---
+                            // --- Title: file name, using Word's "Title" paragraph style ---
+                            String fileName = null;
+                            if (buffer != null && buffer.getPath() != null) {
+                                fileName = Paths.get(buffer.getPath()).getFileName().toString();
+                            }
+                            if (fileName == null) fileName = "Document";
+                            XWPFParagraph titleP = doc.createParagraph();
+                            titleP.setStyle("Title");
+                            titleP.createRun().setText(fileName);
+
+                            // --- Render model/topic/class content with real headings ---
+                            Ili2DocxRenderer.renderTransferDescription(doc, td);
+                            
                             // Save
                             Path parent = outPath.getParent();
                             if (parent != null) Files.createDirectories(parent);
@@ -119,4 +168,16 @@ public final class CreateDocxAction {
     }
 
     private CreateDocxAction() {}
+    
+    private static void trimLeadingEmptyParagraphs(XWPFDocument doc) {
+        while (!doc.getBodyElements().isEmpty()
+                && doc.getBodyElements().get(0).getElementType() == org.apache.poi.xwpf.usermodel.BodyElementType.PARAGRAPH) {
+            XWPFParagraph p = (XWPFParagraph) doc.getBodyElements().get(0);
+            String text = p.getText();
+            boolean hasText = text != null && !text.trim().isEmpty();
+            boolean hasRuns = !p.getRuns().isEmpty();
+            if (hasText || hasRuns) break;
+            doc.removeBodyElement(0);
+        }
+    }
 }

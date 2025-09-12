@@ -64,7 +64,11 @@ dependencies {
         exclude group: "org.apache.xmlgraphics", module: "batik-all"
     }
     // Full schemas (one source of truth for org.openxmlformats.*)
-    implementation("org.apache.poi:ooxml-schemas:1.4")
+    implementation("org.apache.poi:ooxml-schemas:1.4") {
+        // prevent xmlbeans:3.0.1 from coming in transitively
+        exclude group: "org.apache.xmlbeans", module: "xmlbeans"
+    }   
+    implementation("org.apache.xmlbeans:xmlbeans:3.1.0")
 }
 
 jar {
