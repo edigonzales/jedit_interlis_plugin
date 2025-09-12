@@ -10,7 +10,7 @@ import ch.so.agi.jedit.compile.CompileService;
 import ch.so.agi.jedit.ui.AutoCloser;
 import ch.so.agi.jedit.uml._static.LivePreview;
 
-public class InterlisPlugin extends EBPlugin {
+public class InterlisPlugin extends EditPlugin {
     private static final String PROP_COMPILE_ON_SAVE = "interlis.compileOnSave";
         
     @Override
