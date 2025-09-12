@@ -1,9 +1,6 @@
 package ch.so.agi.jedit.compile;
 
-import ch.interlis.ili2c.metamodel.Model;
 import ch.interlis.ili2c.metamodel.TransferDescription;
-import ch.so.agi.jedit.ModelDiscoveryService;
-import ch.so.agi.jedit.compile.Ili2cUtil.Result;
 import ch.so.agi.jedit.console.ConsoleUtil;
 import errorlist.*;
 import sidekick.SideKickPlugin;
