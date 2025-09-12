@@ -47,4 +47,8 @@
         </CODE>
     </ACTION>
 
+  <ACTION NAME="interlis.create-object-catalog">
+    <CODE>ch.so.agi.jedit.objectcatalog.CreateDocxAction.createDocx(view, buffer);</CODE>
+  </ACTION>
+
 </ACTIONS>
