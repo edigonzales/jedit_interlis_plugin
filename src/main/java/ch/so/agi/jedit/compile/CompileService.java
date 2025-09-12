@@ -2,6 +2,7 @@ package ch.so.agi.jedit.compile;
 
 import ch.interlis.ili2c.metamodel.TransferDescription;
 import ch.so.agi.jedit.console.ConsoleUtil;
+import ch.so.agi.jedit.uml._static.UmlStatic;
 import errorlist.*;
 import sidekick.SideKickPlugin;
 
@@ -39,6 +40,7 @@ public final class CompileService {
                 rebuildUiFromCachedTd(view, buffer, td, log);
                 ConsoleUtil.showLog(view, log); 
                 updateErrorList(view, buffer, log); // keep diagnostics visible
+                UmlStatic.show(view, buffer);
                 return;
             }
         }
@@ -62,7 +64,8 @@ public final class CompileService {
                     ConsoleUtil.showLog(view, res.log());
                     updateErrorList(view, buffer, res.log());
                     cacheTd(buffer, res.td(), res.log());
-                    SideKickPlugin.parse(view, true);                    
+                    SideKickPlugin.parse(view, true);
+                    UmlStatic.show(view, buffer);          
                 } catch (Exception e) {
                     Log.log(Log.ERROR, this, e);
                 }

@@ -13,6 +13,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.gjt.sp.util.Log;
+
 public final class LivePreviewServer {
     private final int port;
     private HttpServer server;
@@ -143,7 +145,19 @@ public final class LivePreviewServer {
         if (html.contains(marker)) return html;
         String inject = "\n" + marker + "\n" +
             "<base href=\"/fs/\">\n" +
-            "<script>(function(){try{var es=new EventSource('/events');es.addEventListener('reload',function(){location.reload();});}catch(e){}})();</script>\n";
+            "<script>(function(){\n" +
+            "  try {\n" +
+            "    var es = new EventSource('/events');\n" +
+            "    // Close stream before navigating to avoid NS_BINDING_ABORTED noise\n" +
+            "    function safeClose(){ try{ es.close(); }catch(e){} }\n" +
+            "    es.addEventListener('reload', function(){ safeClose(); location.reload(); });\n" +
+            "    // Also close when the page is being discarded/hidden\n" +
+            "    window.addEventListener('pagehide',  safeClose, {once:true});\n" +
+            "    window.addEventListener('beforeunload', safeClose, {once:true});\n" +
+            "    // Optional: silence devtools console spam\n" +
+            "    es.onerror = function(){ /* let the browser auto-reconnect; no console noise */ };\n" +
+            "  } catch(e) {}\n" +
+            "})();</script>\n";
         int head = html.indexOf("<head");
         if (head >= 0) {
             int gt = html.indexOf('>', head);

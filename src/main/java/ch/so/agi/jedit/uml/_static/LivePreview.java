@@ -5,6 +5,8 @@ import java.net.BindException;
 import java.net.ServerSocket;
 import java.nio.file.Path;
 
+import org.gjt.sp.util.Log;
+
 public final class LivePreview {
     private static final int DEFAULT_PORT = 17865;
     private static LivePreview INSTANCE;

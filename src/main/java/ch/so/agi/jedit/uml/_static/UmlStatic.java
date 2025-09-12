@@ -2,7 +2,6 @@ package ch.so.agi.jedit.uml._static;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,7 +43,8 @@ public class UmlStatic {
                 String templateString = new String(in.readAllBytes(), StandardCharsets.UTF_8);
                 String finalHtmlString = templateString.replace("${mermaidString}", htmlString);
                 
-                Files.write(htmlFile, finalHtmlString.getBytes());                
+                Files.write(htmlFile, finalHtmlString.getBytes());  
+                Log.log(Log.DEBUG, UmlStatic.class, "htmlFile: " + htmlFile.toAbsolutePath().toString());
             } 
             
             LivePreview.get().show(htmlFile); 
