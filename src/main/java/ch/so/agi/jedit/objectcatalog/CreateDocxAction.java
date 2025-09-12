@@ -32,7 +32,7 @@ public final class CreateDocxAction {
 
                     // --- Attach physical /word/styles.xml from resources ---
                     try (InputStream in = CreateDocxAction.class.getResourceAsStream("/styles.xml")) {
-                        if (in == null) throw new IOException("Resource styles.xml not found");
+                        if (in == null) throw new IOException("Resource /styles.xml not found");
                         StylesDocument stylesDoc = StylesDocument.Factory.parse(in);
                         XWPFStyles styles = doc.createStyles(); // ensures styles part exists
                         styles.setStyles(stylesDoc.getStyles());

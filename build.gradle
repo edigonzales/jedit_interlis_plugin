@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 apply from: "$rootDir/gradle/versioning.gradle"
@@ -21,124 +20,63 @@ repositories {
     maven { url 'https://jars.sogeo.services/mirror' }
 }
 
-/* If you ever need to pin versions hard:
+// TODO
+/*
+def jeditHome = System.getenv("JEDIT_HOME")
+def consoleJar = file("$jeditHome/plugins/Console/jars/console.jar")
+
+dependencies {
+    compileOnly files(consoleJar)
+    // … your other compile/runtime deps …
+}
+*/
+
+/*
 configurations.all {
     resolutionStrategy {
         force 'ch.interlis:ili2c-tool:5.6.6'
-        force 'ch.interlis:ili2c-core:5.6.6'
+        force 'ch.interlis:ili2c-core:5.6.5'
     }
 }
 */
 
 dependencies {
-    // jEdit & plugin APIs on compileOnly
     compileOnly files('/Users/stefan/apps/jEdit/5.7.0/jedit.jar')
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/Console.jar")
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/ErrorList.jar")
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/SideKick.jar")
     compileOnly files("${System.properties['user.home']}/Library/jEdit/jars/Hyperlinks.jar")
 
-    // your libs
     implementation 'ch.interlis:ili2c-core:5.6.6'
     implementation 'ch.interlis:ili2c-tool:5.6.6'
-    implementation 'ch.ehi:ehibasics:1.4.1'
+    implementation 'ch.ehi:ehibasics:1.4.1'    
     implementation 'ch.interlis:iox-ili:1.24.1'
-    implementation 'org.json:json:20250517'
-    implementation 'org.opentcs.thirdparty.jhotdraw:jhotdraw:7.6.20190506'
 
-    // --- POI stack for .docx (stable with commons-io 2.4) ---
-    implementation 'org.apache.poi:poi:5.0.0'
-    implementation('org.apache.poi:poi-ooxml:5.0.0') {
-        // avoid duplicate OOXML classes
-        exclude group: 'org.apache.poi', module: 'poi-ooxml-lite'
-        // keep Batik out (not needed for XWPF)
-        exclude group: 'org.apache.xmlgraphics'
+    implementation 'org.json:json:20250517'
+    
+    implementation("org.opentcs.thirdparty.jhotdraw:jhotdraw:7.6.20190506")
+    
+    implementation("org.apache.poi:poi-ooxml:5.0.0") {
+        // make sure the tiny "lite" schemas don't sneak in
+        exclude group: "org.apache.poi", module: "poi-ooxml-lite"
+        // Batik isn't needed for XWPF; exclude if some variant tries to pull it
+        exclude group: "org.apache.xmlgraphics"    // (covers xmlgraphics-commons)
+        exclude group: "org.apache.xmlgraphics", module: "batik-all"
     }
-    implementation 'org.apache.poi:ooxml-schemas:1.4'
-    implementation 'org.apache.xmlbeans:xmlbeans:5.0.2'
-    implementation 'commons-io:commons-io:2.4'
+    // Full schemas (one source of truth for org.openxmlformats.*)
+    implementation("org.apache.poi:ooxml-schemas:1.4")
 }
 
-// We will ship only the shaded jar
-jar { enabled = false }
-
-// -------------------------
-// Shadow configuration
-// -------------------------
-tasks.shadowJar {
-    archiveFileName.set('InterlisPlugin.jar')
-
-    // include plugin descriptors/resources
+jar {
+    archiveFileName = 'InterlisPlugin.jar'
     from('InterlisPlugin.props')
     from('services.xml')
     from('dockables.xml')
-    from('actions.xml') { into('/') }
-
-    // what to include in the fat jar
-    dependencies {
-        include(dependency('org.apache.poi:poi:.*'))
-        include(dependency('org.apache.poi:poi-ooxml:.*'))
-        include(dependency('org.apache.poi:ooxml-schemas:.*'))
-        include(dependency('org.apache.xmlbeans:xmlbeans:.*'))
-
-        include(dependency('commons-io:.*'))
-        include(dependency('org.apache.commons:commons-collections4:.*'))
-        include(dependency('org.apache.commons:commons-compress:.*'))
-        include(dependency('org.apache.commons:commons-math3:.*'))
-        include(dependency('commons-logging:commons-logging:.*'))
-        include(dependency('commons-codec:commons-codec:.*'))
-
-        include(dependency('com.github.virtuald:curvesapi:.*'))
-        include(dependency('org.tukaani:xz:.*'))
-        include(dependency('com.zaxxer:SparseBitSet:.*'))
+    from('actions.xml') {
+        into('/')
     }
-
-    // relocate only POI & commons & helpers; leave xmlbeans & openxmlformats in their canonical pkgs
-    relocate 'org.apache.poi',                  'ch.so.agi.jedit.libs.poi'
-    relocate 'org.apache.commons.io',           'ch.so.agi.jedit.libs.commonsio'
-    relocate 'org.apache.commons.collections4', 'ch.so.agi.jedit.libs.commonscollections4'
-    relocate 'org.apache.commons.compress',     'ch.so.agi.jedit.libs.commonscompress'
-    relocate 'org.apache.commons.math3',        'ch.so.agi.jedit.libs.math3'
-    relocate 'org.apache.commons.logging',      'ch.so.agi.jedit.libs.commonslogging'
-    relocate 'org.apache.commons.codec',        'ch.so.agi.jedit.libs.commonscodec'
-
-    relocate 'com.github.virtuald',             'ch.so.agi.jedit.libs.curvesapi'
-    relocate 'org.tukaani',                     'ch.so.agi.jedit.libs.xz'
-    relocate 'com.zaxxer.sparsebits',           'ch.so.agi.jedit.libs.sparsebits'
-
-    mergeServiceFiles()
-    // DO NOT minimize; POI/XMLBeans/OOXML use reflection/resources
-    // minimize()
 }
 
-tasks.build { dependsOn tasks.shadowJar }
-
-// -------------------------
-// Helper for custom tasks
-// -------------------------
-// Treat these groups as shaded so we don't copy them as separate jars
-ext.SHADED_GROUP_PREFIXES = [
-    'org.apache.poi',
-    'org.apache.xmlbeans',
-    'org.openxmlformats',
-
-    'commons-io',
-    'commons-logging',
-    'commons-codec',
-    'org.apache.commons',   // collections4, compress, math3
-
-    'com.github.virtuald',  // curvesapi
-    'org.tukaani',          // xz
-    'com.zaxxer'            // SparseBitSet
-] as Set
-
-def isShaded(ModuleVersionIdentifier id) {
-    SHADED_GROUP_PREFIXES.any { prefix -> id.group?.startsWith(prefix) }
-}
-
-// -------------------------
-// Your custom tasks (kept)
-// -------------------------
 tasks.register("printResolvedDeps") {
     doLast {
         def ignored = ['jedit.jar'] as Set
@@ -146,9 +84,10 @@ tasks.register("printResolvedDeps") {
         def artifacts = configurations.runtimeClasspath
                 .resolvedConfiguration
                 .resolvedArtifacts
-                .findAll { a -> !ignored.contains(a.file.name) && !isShaded(a.moduleVersion.id) }
 
-        def jarNames = artifacts.collect { it.file.name }.sort()
+        def jarNames = artifacts.findAll { !ignored.contains(it.file.name) }
+                               .collect { it.file.name }
+                               .sort()
         def jarsLine = jarNames.join(' ')
 
         def propsFile = file("InterlisPlugin.props")
@@ -158,40 +97,38 @@ tasks.register("printResolvedDeps") {
 
         def updatedLines = propsFile.readLines().collect { line ->
             if (line.startsWith("plugin.ch.so.agi.jedit.InterlisPlugin.jars=")) {
-                // Include our shaded plugin first; then any unshaded runtime deps
-                return "plugin.ch.so.agi.jedit.InterlisPlugin.jars=InterlisPlugin.jar" +
-                       (jarsLine ? " ${jarsLine}" : "")
+                return "plugin.ch.so.agi.jedit.InterlisPlugin.jars=${jarsLine}"
             } else {
                 return line
             }
         }
 
         propsFile.text = updatedLines.join(System.lineSeparator())
-        println "Updated InterlisPlugin.props with jars: InterlisPlugin.jar${jarsLine ? " ${jarsLine}" : ""}"
+        println "Updated InterlisPlugin.props with jars: $jarsLine"
     }
 }
 
-// keep your original hook
 tasks.named("classes") {
-    finalizedBy(tasks.named("printResolvedDeps"))
+    finalizedBy(printResolvedDeps)
 }
 
 // For developing. Works on macOS only at the moment.
 tasks.register("copyPluginToJedit", Copy) {
-    dependsOn 'shadowJar'
-
+    dependsOn 'jar'
+    
     def runtimeJars = configurations.runtimeClasspath
         .resolvedConfiguration
         .resolvedArtifacts
-        .findAll { a -> a.file.name != 'jedit.jar' && !isShaded(a.moduleVersion.id) }
+        .findAll { it.file.name != 'jedit.jar' }
         .collect { it.file }
 
-    def pluginJar = file("${buildDir}/libs/InterlisPlugin.jar") // shaded jar
+    def pluginJar = file("${buildDir}/libs/InterlisPlugin.jar")
 
     from(runtimeJars + pluginJar) {
-        into '.' // flatten
+        // Flatten directory structure
+        into '.'
     }
 
     into("${System.properties['user.home']}/Library/jEdit/jars")
-    // into("${System.properties['user.home']}/sources/jEdit/portable-settings/jars")
+    //into("${System.properties['user.home']}/sources/jEdit/portable-settings/jars")
 }
