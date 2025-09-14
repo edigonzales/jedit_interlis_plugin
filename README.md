@@ -16,7 +16,7 @@ java -jar jedit.jar -log=3
  * rough... ecken und kanten. 
  * error list als dockable alles als dockable empfehlenswert
  * java 21. betrifft aber glaubs nur macos: java -jar  -Xms2g -Xmx2g -Dsun.java2d.metal=false build/jedit.jar -settings=../jEdit/portable-settings wegen metal. ggf -XX:+UseParallelGC
- * 
+ * Inkonsitzenzen zwischen Export von files (ohne GUI). GUI speichert letztes Verzeichnis nciht.
  * ...
 
 - Jedes Feature beschreiben und dann 23Fr.-Kolleg die Arbeit machen lassen.

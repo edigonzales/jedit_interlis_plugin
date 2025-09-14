@@ -114,6 +114,8 @@ public final class CreateDocxAction {
                             szCs.setVal(BigInteger.valueOf(22));
                             styles.setStyles(ct);
 
+                            Ili2DocxRenderer.ensureAllStyles(doc);
+                            
                             TransferDescription td = TdCache.peekLastValid(buffer);
                             
                             // --- Title ---

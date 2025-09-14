@@ -14,7 +14,7 @@ public final class Ili2DocxRenderer {
     /** Renders models, topics and classes using real Heading styles. */
     public static void renderTransferDescription(XWPFDocument doc, TransferDescription td) {
         java.util.Objects.requireNonNull(td, "TransferDescription is null");
-        ensureHeadingStyles(doc);
+        ensureAllStyles(doc);
 
         Model[] last = td.getModelsFromLastFile();
         if (last == null) last = new Model[0];
@@ -70,6 +70,8 @@ public final class Ili2DocxRenderer {
         }
     }
     
+    
+    
     private static XWPFStyle buildHeadingStyle(String styleId, String name, java.math.BigInteger outlineLevel, boolean bold) {
         // Create CTStyle via XmlBeans loader (typed, schema-safe)
         CTStyle ctStyle = (CTStyle) XmlBeans.getContextTypeLoader().newInstance(CTStyle.type, null);
@@ -94,6 +96,64 @@ public final class Ili2DocxRenderer {
         ctStyle.addNewQFormat();
 
         return new XWPFStyle(ctStyle);
+    }
+    
+    public static void ensureAllStyles(XWPFDocument doc) {
+        XWPFStyles styles = doc.createStyles();
+
+        // Title: bold + 28pt
+        if (!styles.styleExist("Title")) {
+            styles.addStyle(buildParagraphStyle("Title", "Title", null, true, 28));
+        } else {
+            // bump size on existing Title if it lacks one
+            XWPFStyle s = styles.getStyle("Title");
+            if (s != null) {
+                CTRPr rpr = s.getCTStyle().isSetRPr() ? s.getCTStyle().getRPr() : s.getCTStyle().addNewRPr();
+                java.math.BigInteger halfPts = java.math.BigInteger.valueOf(28 * 2L);
+                (rpr.isSetSz() ? rpr.getSz() : rpr.addNewSz()).setVal(halfPts);
+                (rpr.isSetSzCs() ? rpr.getSzCs() : rpr.addNewSzCs()).setVal(halfPts);
+                if (!rpr.isSetB()) rpr.addNewB();
+            }
+        }
+
+        // Heading1/Heading2: bold, outline levels; let size inherit (pass null)
+        if (!styles.styleExist("Heading1")) {
+            styles.addStyle(buildParagraphStyle("Heading1", "Heading 1",
+                    java.math.BigInteger.ZERO, true, null));
+        }
+        if (!styles.styleExist("Heading2")) {
+            styles.addStyle(buildParagraphStyle("Heading2", "Heading 2",
+                    java.math.BigInteger.ONE, true, null));
+        }
+    }
+
+    // Typed, schema-safe style builder (works with your XmlBeans jar)
+    private static XWPFStyle buildParagraphStyle(String styleId, String displayName,
+            java.math.BigInteger outlineLevelOrNull, boolean bold, Integer sizePtOrNull) {
+        CTStyle ct = (CTStyle) XmlBeans.getContextTypeLoader().newInstance(CTStyle.type, null);
+        ct.setStyleId(styleId);
+        ct.setType(STStyleType.PARAGRAPH);
+        ct.addNewName().setVal(displayName);
+
+// paragraph props: outline level if provided
+        CTPPr ppr = ct.isSetPPr() ? ct.getPPr() : ct.addNewPPr();
+        if (outlineLevelOrNull != null) {
+            CTDecimalNumber lvl = ppr.isSetOutlineLvl() ? ppr.getOutlineLvl() : ppr.addNewOutlineLvl();
+            lvl.setVal(outlineLevelOrNull); // 0=H1, 1=H2
+        }
+
+// run props: bold + size
+        CTRPr rpr = ct.isSetRPr() ? ct.getRPr() : ct.addNewRPr();
+        if (bold && !rpr.isSetB())
+            rpr.addNewB(); // <w:b/>
+        if (sizePtOrNull != null) {
+            java.math.BigInteger halfPts = java.math.BigInteger.valueOf(sizePtOrNull * 2L);
+            (rpr.isSetSz() ? rpr.getSz() : rpr.addNewSz()).setVal(halfPts);
+            (rpr.isSetSzCs() ? rpr.getSzCs() : rpr.addNewSzCs()).setVal(halfPts);
+        }
+
+        ct.addNewQFormat();
+        return new XWPFStyle(ct);
     }
     
     private static int ensureHeadingNumbering(XWPFDocument doc) {
