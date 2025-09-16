@@ -16,11 +16,13 @@ plugin.ch.so.agi.jedit.InterlisPlugin.jars=SparseBitSet-1.2.jar activation-1.1.1
 plugin.ch.so.agi.jedit.InterlisPlugin.menu=compileCurrentFile \
     toggleCompileOnSave \
     prettyPrintCurrentFile \
-    sidekick.parser.interlis_parser-switch \
     interlis-collect-keywords \
     interlis-uml-show \
     interlis-uml-show-static \
     interlis.create-object-catalog
+ 
+# Ist unnötig:    
+#sidekick.parser.interlis_parser-switch \    
     
 # Action labels
 compileCurrentFile.label=Compile current file

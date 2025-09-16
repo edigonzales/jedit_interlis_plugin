@@ -47,7 +47,9 @@ public class UmlStatic {
                 Log.log(Log.DEBUG, UmlStatic.class, "htmlFile: " + htmlFile.toAbsolutePath().toString());
             } 
             
-            LivePreview.get().show(htmlFile); 
+            if (LivePreview.isRunning()) { 
+                UmlStatic.show(view, buffer);
+            }
         } catch (IOException e) {
             e.printStackTrace();
             GUIUtilities.error(view, "error-creating-static-uml-file", new String[] { e.getMessage() });

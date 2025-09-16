@@ -20,6 +20,10 @@ public final class LivePreview {
         if (INSTANCE == null) INSTANCE = new LivePreview();
         return INSTANCE;
     }
+    
+    public static synchronized boolean isRunning() {
+        return INSTANCE != null && INSTANCE.server != null /* && INSTANCE.server.isRunning() */;
+    }
 
     public synchronized void show(Path htmlFile) {
         ensureServer();
