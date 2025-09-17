@@ -33,7 +33,7 @@ public class UmlStatic {
         } else {
             htmlString = "<pre class=\"mermaid\">\n"+mermaidString.replace("<<", "&#60;&#60;").replace(">>", "&#62;&#62;")+"</pre>";
         }
-        
+
         try {
             String tempDir = System.getProperty("java.io.tmpdir");        
             Path htmlFile = Paths.get(tempDir, buffer.getName() + ".html");
@@ -47,9 +47,8 @@ public class UmlStatic {
                 Log.log(Log.DEBUG, UmlStatic.class, "htmlFile: " + htmlFile.toAbsolutePath().toString());
             } 
             
-            if (LivePreview.isRunning()) { 
-                UmlStatic.show(view, buffer);
-            }
+            LivePreview.get().show(htmlFile); 
+
         } catch (IOException e) {
             e.printStackTrace();
             GUIUtilities.error(view, "error-creating-static-uml-file", new String[] { e.getMessage() });

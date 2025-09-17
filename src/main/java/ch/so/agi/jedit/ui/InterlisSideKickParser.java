@@ -36,7 +36,6 @@ import ch.interlis.ili2c.metamodel.Viewable;
 import ch.interlis.ili2c.metamodel.ViewableTransferElement;
 
 import ch.so.agi.jedit.compile.TdCache;
-import ch.so.agi.jedit.uml._static.UmlStatic;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,7 +56,7 @@ public class InterlisSideKickParser extends SideKickParser {
     // - beim Öffnen von Sidekick (also des Trees ("Outline"))
     @Override
     public SideKickParsedData parse(Buffer buffer, DefaultErrorSource es) {
-        Log.log(Log.DEBUG, UmlStatic.class, "SideKickParsedData.parse()");
+        Log.log(Log.DEBUG, this, "SideKickParsedData.parse()");
 
         // 0. Create an (initially empty) tree. 
         final SideKickParsedData data = new SideKickParsedData(buffer.getName());
