@@ -1,0 +1,18 @@
+INTERLIS 2.4;
+
+MODEL ModelB (de)
+  AT "https://example.com"
+  VERSION "2025-09-17"
+  =
+  IMPORTS ModelA;
+  
+  TOPIC TopicB = 
+
+    CLASS ClassB =
+      attr2 : ModelA.StructA;
+      attr3 : NUMERIC;
+    END ClassB;
+
+  END TopicB;
+
+END ModelB.
